@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Forecasting Data</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.1.2/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+
+    <!-- Header Navigation -->
+    <header class="bg-green-700 shadow-md">
+        <div class="container mx-auto px-5 py-4 flex justify-between items-center">
+            <h1 class="text-2xl text-white font-bold">Animal Sales Dashboard</h1>
+            <nav class="space-x-4">
+                <a href="./" class="text-green-200 hover:text-white transition-colors duration-200">Raw Data</a>
+                <a href="./forecasting" class="text-green-200 hover:text-white transition-colors duration-200">Forecasting</a>
+                <a href="#materials" class="text-green-200 hover:text-white transition-colors duration-200">Materials</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="container mx-auto my-10 p-8 bg-white rounded-lg shadow-md">
+        <h2 class="text-3xl font-bold text-green-800 text-center mb-5">Animal Sales Forecast for 2024</h2>
+        <p class="text-gray-700 text-center mb-8">
+            Use the dropdowns below to customize how many rows of data you want to view and filter by the type of animal. Our prediction tool helps you understand and plan animal feed sales efficiently for various animals throughout 2024.
+        </p>
+
+        <!-- Row Selection and Animal Filter -->
+        <div class="flex justify-center mb-5 space-x-4">
+            <div>
+                <label for="rowSelect" class="block font-semibold text-gray-700">Rows to Display:</label>
+                <select id="rowSelect" class="border border-green-500 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-green-300">
+                    <option value="5">Show 5 rows</option>
+                    <option value="10">Show 10 rows</option>
+                    <option value="20">Show 20 rows</option>
+                    <option value="50">Show 50 rows</option>
+                    <option value="100">Show 100 rows</option>
+                    <option value="500">Show 500 rows</option>
+                </select>
+            </div>
+            <div>
+                <label for="animalFilter" class="block font-semibold text-gray-700">Filter by Animal:</label>
+                <select id="animalFilter" class="border border-green-500 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-green-300">
+                    <option value="All">All Animals</option>
+                    <option value="Cow">Cows</option>
+                    <option value="Pigs">Pigs</option>
+                    <option value="Chicken">Chicken</option>
+                    <option value="Horses">Horses</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Forecasting Data Table -->
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-green-50 rounded-lg shadow-md">
+                <thead class="bg-green-600 text-white">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Date</th>
+                        <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Animal</th>
+                        <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Units Sold</th>
+                        <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Revenue</th>
+                    </tr>
+                </thead>
+                <tbody id="dataBody">
+                    {% for item in data %}
+                    <tr class="hover:bg-green-100 transition-colors duration-200">
+                        <td class="px-4 py-3 border-t text-gray-800">{{ item['date'] }}</td>
+                        <td class="px-4 py-3 border-t text-gray-800">{{ item['Animal'] }}</td>
+                        <td class="px-4 py-3 border-t text-gray-800">{{ item['units_sold'] }}</td>
+                        <td class="px-4 py-3 border-t text-gray-800">{{ item['revenue'] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-green-700 py-4">
+        <div class="container mx-auto text-center text-white">
+            &copy; 2024 Animal Sales Forecast. All Rights Reserved.
+        </div>
+    </footer>
+
+    <!-- JavaScript for Row and Animal Filtering -->
+    <script>
+        $(document).ready(function() {
+            // Retrieve URL parameters and set default values
+            const urlParams = new URLSearchParams(window.location.search);
+            const rowsToShow = urlParams.get('limit') || '10';
+            const animalFilter = urlParams.get('animal') || 'All';
+    
+            // Set the dropdown values based on URL parameters
+            $('#rowSelect').val(rowsToShow);
+            $('#animalFilter').val(animalFilter);
+    
+            // Function to redirect and fetch data based on selected filters
+            function fetchFilteredData() {
+                const selectedRows = $('#rowSelect').val();
+                const selectedAnimal = $('#animalFilter').val();
+                window.location.href = `/forecasting?limit=${selectedRows}&animal=${selectedAnimal}`;
+            }
+    
+            // Event listeners for dropdown changes
+            $('#rowSelect').change(fetchFilteredData);
+            $('#animalFilter').change(fetchFilteredData);
+    
+            // Highlight the selected navigation link
+            $('nav a').each(function() {
+                if (this.href === window.location.href) {
+                    $(this).addClass('underline text-white');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

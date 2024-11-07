@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Animal Sales Data</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.1.2/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+</head>
+
+<body class="bg-green-50">
+
+    <!-- Navigation Bar -->
+    <nav class="bg-green-700 p-4 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <h2 class="text-white font-bold text-xl">Data Mining Tool</h2>
+            <ul class="flex space-x-4 text-green-200 hover:text-white transition-colors duration-200">
+                <li><a href="./" class="hover:bg-green-600 py-2 px-4 rounded-md">Raw Data</a></li>
+                <li><a href="./forecasting" class="hover:bg-green-600 py-2 px-4 rounded-md">Forecasting</a></li>
+                <li><a href="#materials" class="hover:bg-green-600 py-2 px-4 rounded-md">Materials</a></li>
+                <li><a id="graphLink" href="#chartsContainer" class="hover:bg-green-600 py-2 px-4 rounded-md">Graphs</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-5 pt-10">
+        <h1 class="text-4xl font-bold mb-5 text-center text-green-800">Welcome to the Animal Sales Data Dashboard</h1>
+        <p class="text-center text-gray-700 mb-8">
+            This page is the perfect data mining tool, where we have all the data in one place. 
+            Here, we can analyze raw data, make predictions, and manage necessary materials 
+            for effective decision-making powered by our comprehensive data.
+        </p>
+
+        <!-- Dropdowns Section -->
+        <div class="flex justify-center space-x-4 mb-5">
+            <!-- Dropdown to select an animal -->
+            <select id="animalSelect" class="border border-green-300 rounded p-2">
+                <option value="">Select an Animal</option>
+                {% for animal in animals %}
+                    <option value="{{ animal }}">{{ animal }}</option>
+                {% endfor %}
+            </select>
+
+            <!-- Dropdown to select number of rows to display -->
+            <select id="rowSelect" class="border border-green-300 rounded p-2">
+                <option value="5">Show 5 rows</option>
+                <option value="10">Show 10 rows</option>
+                <option value="20">Show 20 rows</option>
+                <option value="50">Show 50 rows</option>
+                <option value="100">Show 100 rows</option>
+                <option value="500">Show 500 rows</option>
+            </select>
+        </div>
+
+        <!-- Table to display data -->
+        <div class="overflow-x-auto">
+            <table class="table-auto w-full border-collapse bg-white shadow-md rounded-lg overflow-hidden">
+                <thead class="bg-green-600 text-white">
+                    <tr>
+                        <th class="border px-4 py-2">Date</th>
+                        <th class="border px-4 py-2">Units Sold</th>
+                        <th class="border px-4 py-2">Revenue</th>
+                    </tr>
+                </thead>
+                <tbody id="dataBody" class="bg-gray-50">
+                    <!-- Data rows will be added here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Chart Container -->
+        <div id="chartsContainer" class="mt-10">
+            <h2 class="text-2xl font-bold mb-5">Sales Data Charts</h2>
+            <div class="flex space-x-5">
+                <canvas id="revenueChart" width="400" height="200"></canvas>
+                <canvas id="unitsSoldChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // Function to fetch and display data
+            function fetchData() {
+                const selectedAnimal = $('#animalSelect').val();
+                const rowsToShow = parseInt($('#rowSelect').val());
+
+                if (selectedAnimal) {
+                    $.getJSON(`/data/${selectedAnimal}?limit=${rowsToShow}`, function(data) {
+                        let rows = '';
+                        data.forEach(item => {
+                            rows += `
+                                <tr class="hover:bg-gray-100 transition">
+                                    <td class="border px-4 py-2">${item.date}</td>
+                                    <td class="border px-4 py-2">${item.units_sold}</td>
+                                    <td class="border px-4 py-2">${item.revenue}</td>
+                                </tr>`;
+                        });
+                        $('#dataBody').html(rows);
+
+                        // Update charts data
+                        updateCharts(data, rowsToShow);
+                    });
+                } else {
+                    $('#dataBody').html('');
+                }
+            }
+
+            // Function to update charts
+            function updateCharts(data, rowsToShow) {
+                const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+                const unitsSoldCtx = document.getElementById('unitsSoldChart').getContext('2d');
+
+                const labels = getLabels(data, rowsToShow);
+                const revenueData = data.map(item => item.revenue);
+                const unitsSoldData = data.map(item => item.units_sold);
+
+                const revenueChart = new Chart(revenueCtx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Revenue',
+                            data: revenueData,
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        title: {
+                            display: true,
+                            text: 'Revenue'
+                        },
+                        scales: {
+                            yAxes: [{
+                                ticks: {
+                                    beginAtZero: true
+                                }
+                            }]
+                        }
+                    }
+                });
+
+                const unitsSoldChart = new Chart(unitsSoldCtx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Units Sold',
+                            data: unitsSoldData,
+                            backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        title: {
+                            display: true,
+                            text: 'Units Sold'
+                        },
+                        scales: {
+                            yAxes: [{
+                                ticks: {
+                                    beginAtZero: true
+                                }
+                            }]
+                        }
+                    }
+                });
+            }
+
+            // Function to get labels based on rowsToShow
+            function getLabels(data, rowsToShow) {
+                if (rowsToShow <= 30) {
+                    return data.map(item => item.date);
+                } else if (rowsToShow <= 365) {
+                    return data.map(item => getMonth(item.date));
+                } else {
+                    return data.map(item => getQuarter(item.date));
+                }
+            }
+
+            // Function to get month from date
+            function getMonth(date) {
+                const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                const dateParts = date.split('-');
+                return monthNames[parseInt(dateParts[1]) - 1];
+            }
+
+            // Function to get quarter from date
+            function getQuarter(date) {
+                const dateParts = date.split('-');
+                const month = parseInt(dateParts[1]);
+                if (month < 4) {
+                    return 'Q1';
+                } else if (month < 7) {
+                    return 'Q2';
+                } else if (month < 10) {
+                    return 'Q3';
+                } else {
+                    return 'Q4';
+                 }
+            }
+
+            // When an animal is selected, fetch and display the data
+            $('#animalSelect').change(fetchData);
+
+            // When the number of rows to show is changed, fetch data again
+            $('#rowSelect').change(fetchData);
+
+            // Redirect to graph section
+            $('#graphLink').click(function() {
+                $('html, body').animate({
+                    scrollTop: $('#chartsContainer').offset().top
+                }, 500);
+            });
+        });
+    </script>
+
+</body>
+</html>
