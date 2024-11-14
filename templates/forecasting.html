@@ -1,53 +1,58 @@
+<!-- templates/forecasting.html -->
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Forecasting Data</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.1.2/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 </head>
-<body class="bg-gray-100 font-sans leading-normal tracking-normal">
 
+<body class="bg-gray-100 min-h-screen flex flex-col">
     <!-- Header Navigation -->
     <header class="bg-green-700 shadow-md">
         <div class="container mx-auto px-5 py-4 flex justify-between items-center">
             <h1 class="text-2xl text-white font-bold">Animal Sales Dashboard</h1>
             <nav class="space-x-4">
-                <a href="./" class="text-green-200 hover:text-white transition-colors duration-200">Raw Data</a>
-                <a href="./forecasting" class="text-green-200 hover:text-white transition-colors duration-200">Forecasting</a>
-                <a href="#materials" class="text-green-200 hover:text-white transition-colors duration-200">Materials</a>
+                <a href="./" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Raw Data</a>
+                <a href="./forecasting" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Forecasting</a>
+                <a href="#materials" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Materials</a>
             </nav>
         </div>
     </header>
 
     <!-- Main Content Area -->
-    <main class="container mx-auto my-10 p-8 bg-white rounded-lg shadow-md">
+    <main class="container mx-auto my-10 p-8 bg-white rounded-lg shadow-md flex-1">
         <h2 class="text-3xl font-bold text-green-800 text-center mb-5">Animal Sales Forecast for 2024</h2>
         <p class="text-gray-700 text-center mb-8">
-            Use the dropdowns below to customize how many rows of data you want to view and filter by the type of animal. Our prediction tool helps you understand and plan animal feed sales efficiently for various animals throughout 2024.
+            Use the dropdowns below to customize how many rows of data you want to view and filter by the type of animal. 
+            Our prediction tool helps you understand and plan animal feed sales efficiently for various animals throughout 2024.
         </p>
 
-        <!-- Row Selection and Animal Filter -->
-        <div class="flex justify-center mb-5 space-x-4">
+        <!-- Dropdowns Section -->
+        <div class="flex flex-col md:flex-row justify-center mb-5 space-y-4 md:space-y-0 md:space-x-4">
+            <!-- Dropdown to select number of rows to display -->
             <div>
-                <label for="rowSelect" class="block font-semibold text-gray-700">Rows to Display:</label>
-                <select id="rowSelect" class="border border-green-500 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-green-300">
+                <label for="rowSelect" class="block font-semibold text-gray-700 mb-1">Number of Rows:</label>
+                <select id="rowSelect" class="border border-green-500 rounded-md p-2 w-full">
                     <option value="5">Show 5 rows</option>
-                    <option value="10">Show 10 rows</option>
+                    <option value="10" selected>Show 10 rows</option>
                     <option value="20">Show 20 rows</option>
                     <option value="50">Show 50 rows</option>
                     <option value="100">Show 100 rows</option>
                     <option value="500">Show 500 rows</option>
                 </select>
             </div>
+            <!-- Dropdown to select an animal -->
             <div>
-                <label for="animalFilter" class="block font-semibold text-gray-700">Filter by Animal:</label>
-                <select id="animalFilter" class="border border-green-500 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-green-300">
+                <label for="animalFilter" class="block font-semibold text-gray-700 mb-1">Filter by Animal:</label>
+                <select id="animalFilter" class="border border-green-500 rounded-md p-2 w-full">
                     <option value="All">All Animals</option>
-                    <option value="Cow">Cows</option>
-                    <option value="Pigs">Pigs</option>
-                    <option value="Chicken">Chicken</option>
-                    <option value="Horses">Horses</option>
+                    {% for animal in animals %}
+                        <option value="{{ animal }}">{{ animal }}</option>
+                    {% endfor %}
                 </select>
             </div>
         </div>
@@ -63,7 +68,7 @@
                         <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Revenue</th>
                     </tr>
                 </thead>
-                <tbody id="dataBody">
+                <tbody id="dataBody" class="bg-gray-50">
                     {% for item in data %}
                     <tr class="hover:bg-green-100 transition-colors duration-200">
                         <td class="px-4 py-3 border-t text-gray-800">{{ item['date'] }}</td>
@@ -75,6 +80,19 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Chart Container -->
+        <div id="chartsContainer" class="mt-10">
+            <h2 class="text-2xl font-bold mb-5 text-center text-green-800">Forecasted Sales Data Charts</h2>
+            <div class="flex flex-col md:flex-row space-y-5 md:space-y-0 md:space-x-5">
+                <div class="w-full md:w-1/2">
+                    <canvas id="forecastRevenueChart" class="bg-white p-4 rounded shadow"></canvas>
+                </div>
+                <div class="w-full md:w-1/2">
+                    <canvas id="forecastUnitsSoldChart" class="bg-white p-4 rounded shadow"></canvas>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Footer -->
@@ -84,36 +102,159 @@
         </div>
     </footer>
 
-    <!-- JavaScript for Row and Animal Filtering -->
+    <!-- JavaScript for Data Fetching and Chart Handling -->
     <script>
         $(document).ready(function() {
-            // Retrieve URL parameters and set default values
-            const urlParams = new URLSearchParams(window.location.search);
-            const rowsToShow = urlParams.get('limit') || '10';
-            const animalFilter = urlParams.get('animal') || 'All';
-    
-            // Set the dropdown values based on URL parameters
-            $('#rowSelect').val(rowsToShow);
-            $('#animalFilter').val(animalFilter);
-    
-            // Function to redirect and fetch data based on selected filters
-            function fetchFilteredData() {
-                const selectedRows = $('#rowSelect').val();
-                const selectedAnimal = $('#animalFilter').val();
-                window.location.href = `/forecasting?limit=${selectedRows}&animal=${selectedAnimal}`;
-            }
-    
-            // Event listeners for dropdown changes
-            $('#rowSelect').change(fetchFilteredData);
-            $('#animalFilter').change(fetchFilteredData);
-    
-            // Highlight the selected navigation link
-            $('nav a').each(function() {
-                if (this.href === window.location.href) {
-                    $(this).addClass('underline text-white');
+            let forecastRevenueChartInstance = null;
+            let forecastUnitsSoldChartInstance = null;
+
+            // Function to fetch and display forecasting data
+            function fetchForecastData() {
+                const selectedAnimal = $('#animalFilter').val() || "All";
+                const rowsToShow = parseInt($('#rowSelect').val());
+
+                let requestUrl = '';
+                if (selectedAnimal === "All" || selectedAnimal === "") {
+                    requestUrl = `/forecast_data/All?limit=${rowsToShow}`;
+                } else {
+                    requestUrl = `/forecast_data/${selectedAnimal}?limit=${rowsToShow}`;
                 }
-            });
+
+                $.getJSON(requestUrl, function(data) {
+                    // Update Table
+                    let rows = '';
+                    data.forEach(item => {
+                        rows += `
+                            <tr class="hover:bg-gray-100 transition">
+                                <td class="px-4 py-2 border">${item.date}</td>
+                                <td class="px-4 py-2 border">${item.Animal}</td>
+                                <td class="px-4 py-2 border">${item.units_sold}</td>
+                                <td class="px-4 py-2 border">${item.revenue}</td>
+                            </tr>`;
+                    });
+                    $('#dataBody').html(rows);
+
+                    // Update Charts
+                    updateForecastCharts(data);
+                }).fail(function(jqXHR, textStatus, errorThrown) {
+                    console.error('AJAX Error:', textStatus, errorThrown);
+                    alert('Failed to fetch forecasting data. Please try again.');
+                });
+            }
+
+            // Function to update forecast charts
+            function updateForecastCharts(data) {
+                const labels = data.map(item => item.date);
+                const forecastRevenueData = data.map(item => item.revenue);
+                const forecastUnitsSoldData = data.map(item => item.units_sold);
+
+                // Destroy existing charts if they exist
+                if (forecastRevenueChartInstance) forecastRevenueChartInstance.destroy();
+                if (forecastUnitsSoldChartInstance) forecastUnitsSoldChartInstance.destroy();
+
+                const revenueCtx = document.getElementById('forecastRevenueChart').getContext('2d');
+                forecastRevenueChartInstance = new Chart(revenueCtx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Forecasted Revenue',
+                            data: forecastRevenueData,
+                            backgroundColor: 'rgba(34, 197, 94, 0.2)', // Green
+                            borderColor: 'rgba(34, 197, 94, 1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Forecasted Revenue Over Time',
+                                font: {
+                                    size: 18
+                                }
+                            },
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Revenue'
+                                }
+                            }
+                        }
+                    }
+                });
+
+                const unitsSoldCtx = document.getElementById('forecastUnitsSoldChart').getContext('2d');
+                forecastUnitsSoldChartInstance = new Chart(unitsSoldCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Forecasted Units Sold',
+                            data: forecastUnitsSoldData,
+                            backgroundColor: 'rgba(59, 130, 246, 0.6)', // Blue
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Forecasted Units Sold Over Time',
+                                font: {
+                                    size: 18
+                                }
+                            },
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Units Sold'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Event Listeners
+            $('#animalFilter').change(fetchForecastData);
+            $('#rowSelect').change(fetchForecastData);
+
+            // Initial Data Fetch
+            fetchForecastData();
         });
     </script>
 </body>
+
 </html>

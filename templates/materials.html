@@ -1,0 +1,302 @@
+<!-- templates/materials.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Materials Needed</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen flex flex-col">
+    <!-- Header Navigation -->
+    <header class="bg-green-700 shadow-md">
+        <div class="container mx-auto px-5 py-4 flex justify-between items-center">
+            <h1 class="text-2xl text-white font-bold">Animal Sales Dashboard</h1>
+            <nav class="space-x-4">
+                <a href="./" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Raw Data</a>
+                <a href="./forecasting" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Forecasting</a>
+                <a href="./materials" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Materials</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="container mx-auto my-10 p-8 bg-white rounded-lg shadow-md flex-1">
+        <h2 class="text-3xl font-bold text-green-800 text-center mb-5">Materials Needed for Animal Food Production in 2024</h2>
+        <p class="text-gray-700 text-center mb-8">
+            This page displays the materials required to produce animal food for each month of 2024. You can view the materials needed for each animal type and visualize the total materials required throughout the year.
+        </p>
+
+        <!-- Dropdowns Section (Filters) -->
+        <div class="flex flex-col md:flex-row justify-center mb-5 space-y-4 md:space-y-0 md:space-x-4">
+            <!-- Dropdown to select an animal -->
+            <div>
+                <label for="animalFilter" class="block font-semibold text-gray-700 mb-1">Filter by Animal:</label>
+                <select id="animalFilter" class="border border-green-500 rounded-md p-2 w-full">
+                    <option value="All">All Animals</option>
+                    <option value="Horses">Horses</option>
+                    <option value="Cows">Cows</option>
+                    <option value="Pigs">Pigs</option>
+                    <option value="Chickens">Chickens</option>
+                </select>
+            </div>
+
+            <!-- Dropdown to select a material -->
+            <div>
+                <label for="materialFilter" class="block font-semibold text-gray-700 mb-1">Filter by Material:</label>
+                <select id="materialFilter" class="border border-green-500 rounded-md p-2 w-full">
+                    <option value="All">All Materials</option>
+                    <option value="Heno">Heno</option>
+                    <option value="Granos">Granos</option>
+                    <option value="Suplemento Vitamínico">Suplemento Vitamínico</option>
+                    <option value="Agua">Agua</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Materials Needed Table -->
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-green-50 rounded-lg shadow-md">
+                <thead class="bg-green-600 text-white">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Month</th>
+                        <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Material Name Needed</th>
+                        <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Animal Food Name</th>
+                        <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Quantity Needed</th>
+                    </tr>
+                </thead>
+                <tbody id="dataBody" class="bg-gray-50">
+                    <!-- Data rows will be dynamically inserted here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Charts Container -->
+        <div id="chartsContainer" class="mt-10">
+            <h2 class="text-2xl font-bold mb-5 text-center text-green-800">Total Materials Needed for 2024</h2>
+            <div class="flex flex-col md:flex-row space-y-5 md:space-y-0 md:space-x-5">
+                <div class="w-full md:w-1/2">
+                    <canvas id="materialQuantityChart" class="bg-white p-4 rounded shadow"></canvas>
+                </div>
+                <div class="w-full md:w-1/2">
+                    <canvas id="materialTrendChart" class="bg-white p-4 rounded shadow"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-green-700 py-4">
+        <div class="container mx-auto text-center text-white">
+            &copy; 2024 Animal Sales Forecast. All Rights Reserved.
+        </div>
+    </footer>
+
+    <!-- JavaScript for Data Fetching and Chart Handling -->
+    <script>
+        $(document).ready(function() {
+            let materialQuantityChartInstance = null;
+            let materialTrendChartInstance = null;
+
+            // Function to fetch and display materials data
+            function fetchMaterialsData() {
+                const selectedAnimal = $('#animalFilter').val();
+                const selectedMaterial = $('#materialFilter').val();
+
+                $.getJSON('/materials_data', function(data) {
+                    // Apply filters
+                    let filteredData = data;
+
+                    if (selectedAnimal !== 'All') {
+                        filteredData = filteredData.filter(item => item.animal_food === selectedAnimal);
+                    }
+
+                    if (selectedMaterial !== 'All') {
+                        filteredData = filteredData.filter(item => item.material_name === selectedMaterial);
+                    }
+
+                    // Update Table
+                    let rows = '';
+                    filteredData.forEach(item => {
+                        rows += `
+                            <tr class="hover:bg-gray-100 transition">
+                                <td class="px-4 py-2 border">${item.month}</td>
+                                <td class="px-4 py-2 border">${item.material_name}</td>
+                                <td class="px-4 py-2 border">${item.animal_food}</td>
+                                <td class="px-4 py-2 border">${item.quantity_needed}</td>
+                            </tr>`;
+                    });
+                    $('#dataBody').html(rows);
+
+                    // Update Charts
+                    updateMaterialQuantityChart(data);
+                    updateMaterialTrendChart(data);
+                }).fail(function(jqXHR, textStatus, errorThrown) {
+                    console.error('AJAX Error:', textStatus, errorThrown);
+                    alert('Failed to fetch materials data. Please try again.');
+                });
+            }
+
+            // Function to update material quantity chart (Pie Chart)
+            function updateMaterialQuantityChart(data) {
+                // Aggregate total quantity needed per material
+                const materialTotals = {};
+
+                data.forEach(item => {
+                    if (materialTotals[item.material_name]) {
+                        materialTotals[item.material_name] += item.quantity_needed;
+                    } else {
+                        materialTotals[item.material_name] = item.quantity_needed;
+                    }
+                });
+
+                const labels = Object.keys(materialTotals);
+                const quantities = Object.values(materialTotals);
+
+                // Define colors for materials
+                const colors = [
+                    'rgba(34, 197, 94, 0.6)',    // Heno - Green
+                    'rgba(59, 130, 246, 0.6)',   // Granos - Blue
+                    'rgba(234, 88, 12, 0.6)',    // Suplemento Vitamínico - Orange
+                    'rgba(251, 146, 60, 0.6)'    // Agua - Light Orange
+                ];
+
+                // Adjust colors based on number of materials
+                const backgroundColors = labels.map((label, index) => colors[index % colors.length]);
+                const borderColors = backgroundColors.map(color => color.replace('0.6', '1'));
+
+                // Destroy existing chart if it exists
+                if (materialQuantityChartInstance) materialQuantityChartInstance.destroy();
+
+                const ctx = document.getElementById('materialQuantityChart').getContext('2d');
+                materialQuantityChartInstance = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Total Quantity Needed',
+                            data: quantities,
+                            backgroundColor: backgroundColors,
+                            borderColor: borderColors,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Total Materials Needed for 2024',
+                                font: {
+                                    size: 18
+                                }
+                            },
+                            legend: {
+                                display: true,
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Function to update material trend chart (Line Chart)
+            function updateMaterialTrendChart(data) {
+                // Aggregate quantity needed per material per month
+                const materialTrend = {};
+
+                data.forEach(item => {
+                    if (!materialTrend[item.material_name]) {
+                        materialTrend[item.material_name] = {};
+                    }
+                    if (materialTrend[item.material_name][item.month]) {
+                        materialTrend[item.material_name][item.month] += item.quantity_needed;
+                    } else {
+                        materialTrend[item.material_name][item.month] = item.quantity_needed;
+                    }
+                });
+
+                // Define the order of months in Spanish
+                const spanishMonths = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                                       'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+                // Prepare datasets
+                const datasets = [];
+                const colors = {
+                    'Heno': 'rgba(34, 197, 94, 0.6)',             // Green
+                    'Granos': 'rgba(59, 130, 246, 0.6)',          // Blue
+                    'Suplemento Vitamínico': 'rgba(234, 88, 12, 0.6)',  // Orange
+                    'Agua': 'rgba(251, 146, 60, 0.6)'             // Light Orange
+                };
+
+                Object.keys(materialTrend).forEach(material => {
+                    const quantities = spanishMonths.map(month => materialTrend[material][month] || 0);
+                    datasets.push({
+                        label: material,
+                        data: quantities,
+                        backgroundColor: colors[material] || 'rgba(107, 114, 128, 0.6)', // Default Gray
+                        borderColor: colors[material] || 'rgba(107, 114, 128, 1)',
+                        borderWidth: 1,
+                        fill: false,
+                        tension: 0.1
+                    });
+                });
+
+                // Destroy existing chart if it exists
+                if (materialTrendChartInstance) materialTrendChartInstance.destroy();
+
+                const ctx = document.getElementById('materialTrendChart').getContext('2d');
+                materialTrendChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: spanishMonths,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Monthly Materials Needed in 2024',
+                                font: {
+                                    size: 18
+                                }
+                            },
+                            legend: {
+                                display: true,
+                                position: 'bottom'
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Mes'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Cantidad Necesaria'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Event Listeners for Filters
+            $('#animalFilter').change(fetchMaterialsData);
+            $('#materialFilter').change(fetchMaterialsData);
+
+            // Initial Data Fetch
+            fetchMaterialsData();
+        });
+    </script>
+</body>
+
+</html>
