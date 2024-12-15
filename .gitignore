@@ -1,0 +1,28 @@
+# Archivos generados automáticamente
+node_modules/
+dist/
+build/
+*.class
+*.exe
+
+# Archivos de caché
+__pycache__/
+*.log
+*.pyc
+*.pyo
+
+# Configuración del entorno
+.my_env
+.my_env.local
+
+# Configuración de editores/IDE
+.vscode/
+.idea/
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Otros archivos que no quieras subir
+/secret-key.txt
+/database.sqlite3

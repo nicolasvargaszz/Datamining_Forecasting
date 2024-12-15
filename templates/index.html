@@ -1,84 +1,75 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 
 <head>
     <meta charset="UTF-8">
-    <title>Animal Sales Data</title>
+    <title>Datos de Ventas de Animales</title> 
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 </head>
 
 <body class="bg-green-50 min-h-screen flex flex-col">
-    <!-- Navigation Bar -->
     <nav class="bg-green-700 p-4 shadow-md">
         <div class="container mx-auto flex justify-between items-center">
-            <h2 class="text-white font-bold text-xl">Data Mining Tool</h2>
+            <h2 class="text-white font-bold text-xl">Herramienta de Minería de Datos</h2>
             <ul class="flex space-x-4">
-                <li><a href="./" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Raw Data</a></li>
-                <li><a href="./forecasting" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Forecasting</a></li>
-                <li><a href="#materials" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Materials</a></li>
-                <li><a id="graphLink" href="#chartsContainer" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Graphs</a></li>
+                <li><a href="./" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Datos Brutos</a></li>
+                <li><a href="./forecasting" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Pronóstico</a></li>
+                <li><a href="./materials" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Materiales</a></li>
+                <li><a id="graphLink" href="#chartsContainer" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Gráficos</a></li>
             </ul>
         </div>
     </nav>
 
-    <!-- Main Content -->
     <div class="container mx-auto p-5 pt-10 flex-1">
-        <h1 class="text-4xl font-bold mb-5 text-center text-green-800">Welcome to the Animal Sales Data Dashboard</h1>
+        <h1 class="text-4xl font-bold mb-5 text-center text-green-800">Bienvenido al Panel de Datos de Ventas de Animales</h1>
         <p class="text-center text-gray-700 mb-8">
-            This page is the perfect data mining tool, where we have all the data in one place. 
-            Here, we can analyze raw data, make predictions, and manage necessary materials 
-            for effective decision-making powered by our comprehensive data.
+            Esta página es la herramienta de minería de datos perfecta, donde tenemos todos los datos en un solo lugar. 
+            Aquí, podemos analizar datos brutos, hacer predicciones y administrar los materiales necesarios 
+            para una toma de decisiones efectiva respaldada por nuestros datos completos.
         </p>
 
-        <!-- Dropdowns Section -->
         <div class="flex flex-col md:flex-row justify-center space-y-4 md:space-y-0 md:space-x-4 mb-5">
-            <!-- Dropdown to select an animal -->
             <div>
-                <label for="animalSelect" class="block text-gray-700 mb-1">Select an Animal:</label>
+                <label for="animalSelect" class="block text-gray-700 mb-1">Seleccione un Animal:</label>
                 <select id="animalSelect" class="border border-green-300 rounded p-2 w-full">
-                    <option value="All">All Animals</option>
+                    <option value="All">Todos los Animales</option>
                     {% for animal in animals %}
                         <option value="{{ animal }}">{{ animal }}</option>
                     {% endfor %}
                 </select>
             </div>
 
-            <!-- Dropdown to select number of rows to display -->
             <div>
-                <label for="rowSelect" class="block text-gray-700 mb-1">Number of Rows:</label>
+                <label for="rowSelect" class="block text-gray-700 mb-1">Número de Filas:</label>
                 <select id="rowSelect" class="border border-green-300 rounded p-2 w-full">
-                    <option value="5">Show 5 rows</option>
-                    <option value="10" selected>Show 10 rows</option>
-                    <option value="20">Show 20 rows</option>
-                    <option value="50">Show 50 rows</option>
-                    <option value="100">Show 100 rows</option>
-                    <option value="500">Show 500 rows</option>
+                    <option value="5">Mostrar 5 filas</option>
+                    <option value="10" selected>Mostrar 10 filas</option>
+                    <option value="20">Mostrar 20 filas</option>
+                    <option value="50">Mostrar 50 filas</option>
+                    <option value="100">Mostrar 100 filas</option>
+                    <option value="500">Mostrar 500 filas</option>
                 </select>
             </div>
         </div>
 
-        <!-- Table to display data -->
         <div class="overflow-x-auto">
             <table class="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
                 <thead class="bg-green-600 text-white">
                     <tr>
-                        <th class="border px-4 py-2">Date</th>
-                        <th class="border px-4 py-2">Units Sold</th>
-                        <th class="border px-4 py-2">Revenue</th>
+                        <th class="border px-4 py-2">Fecha</th>
+                        <th class="border px-4 py-2">Unidades Vendidas</th>
+                        <th class="border px-4 py-2">Ingresos</th>
                     </tr>
                 </thead>
                 <tbody id="dataBody" class="bg-gray-50">
-                    <!-- Data rows will be dynamically inserted here -->
-                </tbody>
+                    </tbody>
             </table>
         </div>
 
-        <!-- Chart Container -->
         <div id="chartsContainer" class="mt-10">
-            <h2 class="text-2xl font-bold mb-5 text-center text-green-800">Sales Data Charts</h2>
+            <h2 class="text-2xl font-bold mb-5 text-center text-green-800">Gráficos de Datos de Ventas</h2>
             <div class="flex flex-col md:flex-row space-y-5 md:space-y-0 md:space-x-5">
                 <div class="w-full md:w-1/2">
                     <canvas id="revenueChart" class="bg-white p-4 rounded shadow"></canvas>
@@ -90,13 +81,11 @@
         </div>
     </div>
 
-    <!-- Footer -->
     <footer class="bg-green-700 py-4">
         <div class="container mx-auto text-center text-white">
-            &copy; 2024 Animal Sales Forecast. All Rights Reserved.
+            &copy; 2024 Pronóstico de Ventas de Animales. Todos los Derechos Reservados.
         </div>
     </footer>
-
     <!-- JavaScript for Data Fetching and Chart Handling -->
     <script>
         $(document).ready(function() {

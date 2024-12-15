@@ -1,115 +1,174 @@
 <!-- templates/materials.html -->
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Materials Needed</title>
+    <title>Materiales Necesarios</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 </head>
-
-<body class="bg-gray-100 min-h-screen flex flex-col">
-    <!-- Header Navigation -->
-    <header class="bg-green-700 shadow-md">
+<body class="bg-gray-100 flex flex-col min-h-screen">
+    <!-- Barra de Navegación -->
+    <header class="bg-white shadow-md">
         <div class="container mx-auto px-5 py-4 flex justify-between items-center">
-            <h1 class="text-2xl text-white font-bold">Animal Sales Dashboard</h1>
+            <h1 class="text-2xl text-green-800 font-bold">Panel de Ventas de Alimentos Animales</h1>
             <nav class="space-x-4">
-                <a href="./" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Raw Data</a>
-                <a href="./forecasting" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Forecasting</a>
-                <a href="./materials" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Materials</a>
+                <a href="./" class="text-green-700 hover:text-green-900 font-semibold py-2 px-4 rounded-md transition">Datos Históricos</a>
+                <a href="./forecasting" class="text-green-700 hover:text-green-900 font-semibold py-2 px-4 rounded-md transition">Pronósticos</a>
+                <a href="./materials" class="text-green-700 hover:text-green-900 font-semibold py-2 px-4 rounded-md transition">Materiales</a>
             </nav>
         </div>
     </header>
 
-    <!-- Main Content Area -->
-    <main class="container mx-auto my-10 p-8 bg-white rounded-lg shadow-md flex-1">
-        <h2 class="text-3xl font-bold text-green-800 text-center mb-5">Materials Needed for Animal Food Production in 2024</h2>
-        <p class="text-gray-700 text-center mb-8">
-            This page displays the materials required to produce animal food for each month of 2024. You can view the materials needed for each animal type and visualize the total materials required throughout the year.
+    <!-- Contenido Principal -->
+    <main class="container mx-auto my-10 p-8 bg-white rounded-lg shadow-lg flex-1">
+        <h2 class="text-3xl font-extrabold text-green-800 text-center mb-5">Materiales Necesarios para la Producción de Alimentos en 2024</h2>
+        <p class="text-gray-700 text-center mb-8 max-w-2xl mx-auto">
+            A continuación se presenta una visión completa de la cantidad de materiales en kilogramos requeridos para producir alimentos para animales a lo largo del año.
+            Utilice los filtros para enfocarse en animales o materiales específicos, y seleccione cuántos datos mostrar. Revise la tabla, el resumen y las gráficas para obtener información más profunda.
         </p>
 
-        <!-- Dropdowns Section (Filters) -->
-        <div class="flex flex-col md:flex-row justify-center mb-5 space-y-4 md:space-y-0 md:space-x-4">
-            <!-- Dropdown to select an animal -->
-            <div>
-                <label for="animalFilter" class="block font-semibold text-gray-700 mb-1">Filter by Animal:</label>
+        <!-- Sección de Filtros -->
+        <div class="flex flex-col md:flex-row justify-center mb-10 space-y-4 md:space-y-0 md:space-x-4">
+            <!-- Filtro por Animal -->
+            <div class="w-full md:w-1/4">
+                <label for="animalFilter" class="block font-semibold text-gray-700 mb-1">Filtrar por Animal:</label>
                 <select id="animalFilter" class="border border-green-500 rounded-md p-2 w-full">
-                    <option value="All">All Animals</option>
-                    <option value="Horses">Horses</option>
-                    <option value="Cows">Cows</option>
-                    <option value="Pigs">Pigs</option>
-                    <option value="Chickens">Chickens</option>
+                    <option value="All">Todos</option>
+                    <option value="Horses">Caballos</option>
+                    <option value="Cow">Vaca</option>
+                    <option value="Pig">Cerdo</option>
+                    <option value="Chicken">Pollo</option>
                 </select>
             </div>
 
-            <!-- Dropdown to select a material -->
-            <div>
-                <label for="materialFilter" class="block font-semibold text-gray-700 mb-1">Filter by Material:</label>
+            <!-- Filtro por Material -->
+            <div class="w-full md:w-1/4">
+                <label for="materialFilter" class="block font-semibold text-gray-700 mb-1">Filtrar por Material:</label>
                 <select id="materialFilter" class="border border-green-500 rounded-md p-2 w-full">
-                    <option value="All">All Materials</option>
-                    <option value="Heno">Heno</option>
-                    <option value="Granos">Granos</option>
+                    <option value="All">Todos</option>
+                    <option value="Trigo">Trigo</option>
                     <option value="Suplemento Vitamínico">Suplemento Vitamínico</option>
+                    <option value="Heno">Heno</option>
                     <option value="Agua">Agua</option>
                 </select>
             </div>
+
+            <!-- Filtro por Cantidad a Mostrar -->
+            <div class="w-full md:w-1/4">
+                <label for="limitFilter" class="block font-semibold text-gray-700 mb-1">Cantidad a Mostrar:</label>
+                <select id="limitFilter" class="border border-green-500 rounded-md p-2 w-full">
+                    <option value="0">Todos</option>
+                    <option value="10">10</option>
+                    <option value="100">100</option>
+                    <option value="1000">1000</option>
+                    <option value="10000">10000</option>
+                </select>
+            </div>
         </div>
 
-        <!-- Materials Needed Table -->
-        <div class="overflow-x-auto">
-            <table class="min-w-full bg-green-50 rounded-lg shadow-md">
-                <thead class="bg-green-600 text-white">
-                    <tr>
-                        <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Month</th>
-                        <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Material Name Needed</th>
-                        <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Animal Food Name</th>
-                        <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Quantity Needed</th>
-                    </tr>
-                </thead>
-                <tbody id="dataBody" class="bg-gray-50">
-                    <!-- Data rows will be dynamically inserted here -->
-                </tbody>
-            </table>
+        <!-- Tarjeta de Resumen -->
+        <div class="bg-green-50 p-6 rounded-lg shadow-md mb-10" id="summaryCard" style="display:none;">
+            <h3 class="text-xl font-bold text-green-700 mb-2">Resumen de Datos Seleccionados</h3>
+            <p class="text-gray-700" id="summaryText"></p>
         </div>
 
-        <!-- Charts Container -->
+        <!-- Tabla de Materiales Necesarios -->
+        <div class="bg-white p-5 rounded-lg shadow-md mb-10">
+            <h3 class="text-xl font-bold text-green-700 mb-4">Datos Detallados de Materiales</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-gray-50 rounded-lg shadow-md">
+                    <thead class="bg-green-600 text-white">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Mes</th>
+                            <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Nombre del Material</th>
+                            <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Tipo de Alimento Animal</th>
+                            <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Cantidad Necesaria</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataBody" class="bg-white">
+                        <!-- Filas de datos se insertan dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4 flex justify-center">
+                <button id="loadMoreButton" class="bg-green-700 text-white font-bold py-2 px-4 rounded-md hover:bg-green-800 transition">
+                    Mostrar más datos
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabla de Totales Mensuales -->
+        <div class="bg-white p-5 rounded-lg shadow-md mb-10" id="monthlyTotalsSection" style="display:none;">
+            <h3 class="text-xl font-bold text-green-700 mb-4">Totales Mensuales</h3>
+            <p class="text-gray-700 mb-4">
+                Esta tabla muestra la cantidad total de todos los materiales filtrados, agregados por mes En Kilogramos.
+            </p>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-gray-50 rounded-lg shadow-md">
+                    <thead class="bg-green-600 text-white">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Mes</th>
+                            <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Cantidad Total (Todos los Materiales, en Kilogramos)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="monthlyTotalsBody" class="bg-white">
+                        <!-- Totales mensuales dinámicos -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Gráficas -->
         <div id="chartsContainer" class="mt-10">
-            <h2 class="text-2xl font-bold mb-5 text-center text-green-800">Total Materials Needed for 2024</h2>
-            <div class="flex flex-col md:flex-row space-y-5 md:space-y-0 md:space-x-5">
-                <div class="w-full md:w-1/2">
-                    <canvas id="materialQuantityChart" class="bg-white p-4 rounded shadow"></canvas>
+            <h2 class="text-2xl font-bold mb-5 text-center text-green-800">Visualización de Requerimientos de Materiales</h2>
+            <p class="text-gray-600 text-center mb-8 max-w-xl mx-auto">
+                El gráfico circular muestra la proporción total de cada material necesario en 2024, mientras que el gráfico de líneas muestra la tendencia mensual por material.
+            </p>
+            <div class="flex flex-col md:flex-row space-y-10 md:space-y-0 md:space-x-10">
+                <div class="w-full md:w-1/2 bg-white p-5 rounded-lg shadow-md">
+                    <h4 class="text-lg font-semibold text-green-700 mb-4">Distribución Total de Materiales</h4>
+                    <canvas id="materialQuantityChart"></canvas>
                 </div>
-                <div class="w-full md:w-1/2">
-                    <canvas id="materialTrendChart" class="bg-white p-4 rounded shadow"></canvas>
+                <div class="w-full md:w-1/2 bg-white p-5 rounded-lg shadow-md">
+                    <h4 class="text-lg font-semibold text-green-700 mb-4">Tendencias Mensuales de Materiales</h4>
+                    <canvas id="materialTrendChart"></canvas>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-green-700 py-4">
-        <div class="container mx-auto text-center text-white">
-            &copy; 2024 Animal Sales Forecast. All Rights Reserved.
+    <!-- Pie de Página -->
+    <footer class="bg-white border-t border-gray-200 py-4">
+        <div class="container mx-auto text-center text-gray-600 text-sm">
+            &copy; 2024 Pronóstico de Ventas de Alimentos Animales. Todos los Derechos Reservados.
         </div>
     </footer>
 
-    <!-- JavaScript for Data Fetching and Chart Handling -->
+    <!-- JavaScript para obtener datos y manejar gráficos -->
     <script>
         $(document).ready(function() {
             let materialQuantityChartInstance = null;
             let materialTrendChartInstance = null;
 
-            // Function to fetch and display materials data
+            // Orden de meses en español
+            const spanishMonths = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+            // Parámetros de visualización
+            let currentLimit = 60; // Número inicial de filas
+            const increment = 20;  // Cantidad de filas a aumentar cada vez que se presione "Mostrar más datos"
+
+            // Función para obtener y mostrar datos
             function fetchMaterialsData() {
                 const selectedAnimal = $('#animalFilter').val();
                 const selectedMaterial = $('#materialFilter').val();
+                const selectedLimit = $('#limitFilter').val(); // Obtener la opción seleccionada para el límite
 
-                $.getJSON('/materials_data', function(data) {
-                    // Apply filters
+                $.getJSON(`/materials_summary_data?limit=${selectedLimit}`, function(data) {
+                    // Filtrar datos según los selectores
                     let filteredData = data;
-
                     if (selectedAnimal !== 'All') {
                         filteredData = filteredData.filter(item => item.animal_food === selectedAnimal);
                     }
@@ -118,57 +177,119 @@
                         filteredData = filteredData.filter(item => item.material_name === selectedMaterial);
                     }
 
-                    // Update Table
-                    let rows = '';
-                    filteredData.forEach(item => {
-                        rows += `
-                            <tr class="hover:bg-gray-100 transition">
-                                <td class="px-4 py-2 border">${item.month}</td>
-                                <td class="px-4 py-2 border">${item.material_name}</td>
-                                <td class="px-4 py-2 border">${item.animal_food}</td>
-                                <td class="px-4 py-2 border">${item.quantity_needed}</td>
-                            </tr>`;
+                    // Ordenar por mes
+                    filteredData.sort((a, b) => {
+                        return spanishMonths.indexOf(a.month) - spanishMonths.indexOf(b.month);
                     });
-                    $('#dataBody').html(rows);
 
-                    // Update Charts
-                    updateMaterialQuantityChart(data);
-                    updateMaterialTrendChart(data);
+                    // Tomar los primeros 'currentLimit' elementos
+                    const limitedData = filteredData.slice(0, currentLimit);
+
+                    // Actualizar tarjeta de resumen
+                    updateSummaryCard(limitedData);
+
+                    // Actualizar tabla principal
+                    updateMainTable(limitedData);
+
+                    // Actualizar totales mensuales
+                    updateMonthlyTotals(limitedData);
+
+                    // Actualizar gráficas
+                    updateMaterialQuantityChart(limitedData);
+                    updateMaterialTrendChart(limitedData);
+
+                    // Manejar botón "Mostrar más datos"
+                    if (filteredData.length > currentLimit) {
+                        $('#loadMoreButton').show();
+                    } else {
+                        $('#loadMoreButton').hide();
+                    }
+
                 }).fail(function(jqXHR, textStatus, errorThrown) {
-                    console.error('AJAX Error:', textStatus, errorThrown);
-                    alert('Failed to fetch materials data. Please try again.');
+                    console.error('Error AJAX:', textStatus, errorThrown);
+                    alert('No se pudieron obtener los datos de materiales. Intente nuevamente.');
                 });
             }
 
-            // Function to update material quantity chart (Pie Chart)
+            function updateSummaryCard(filteredData) {
+                if (filteredData.length === 0) {
+                    $('#summaryCard').hide();
+                    return;
+                }
+
+                const totalQuantity = filteredData.reduce((sum, item) => sum + item.total_quantity, 0);
+                $('#summaryText').text(`Mostrando ${filteredData.length} filas seleccionadas, con un total aproximado de ${totalQuantity.toFixed(2)} unidades de material.`);
+                $('#summaryCard').show();
+            }
+
+            function updateMainTable(limitedData) {
+                let rows = '';
+                limitedData.forEach(item => {
+                    rows += `
+                        <tr class="hover:bg-gray-100 transition">
+                            <td class="px-4 py-2 border text-gray-700">${item.month}</td>
+                            <td class="px-4 py-2 border text-gray-700">${item.material_name}</td>
+                            <td class="px-4 py-2 border text-gray-700">${item.animal_food}</td>
+                            <td class="px-4 py-2 border text-gray-700">${item.total_quantity}</td>
+                        </tr>`;
+                });
+                $('#dataBody').html(rows);
+            }
+
+            function updateMonthlyTotals(filteredData) {
+                // Agregar totales por mes
+                const monthlyTotals = {};
+                filteredData.forEach(item => {
+                    if (!monthlyTotals[item.month]) {
+                        monthlyTotals[item.month] = 0;
+                    }
+                    monthlyTotals[item.month] += item.total_quantity;
+                });
+
+                const sortedMonths = spanishMonths.filter(m => monthlyTotals[m] !== undefined);
+
+                let totalsRows = '';
+                sortedMonths.forEach(month => {
+                    totalsRows += `
+                        <tr class="hover:bg-gray-100 transition">
+                            <td class="px-4 py-2 border text-gray-700">${month}</td>
+                            <td class="px-4 py-2 border text-gray-700 font-semibold">${monthlyTotals[month].toFixed(2)}</td>
+                        </tr>`;
+                });
+
+                if (sortedMonths.length > 0) {
+                    $('#monthlyTotalsBody').html(totalsRows);
+                    $('#monthlyTotalsSection').show();
+                } else {
+                    $('#monthlyTotalsSection').hide();
+                }
+            }
+
+            // Gráfica de cantidad total por material (Pie)
             function updateMaterialQuantityChart(data) {
-                // Aggregate total quantity needed per material
                 const materialTotals = {};
 
                 data.forEach(item => {
                     if (materialTotals[item.material_name]) {
-                        materialTotals[item.material_name] += item.quantity_needed;
+                        materialTotals[item.material_name] += item.total_quantity;
                     } else {
-                        materialTotals[item.material_name] = item.quantity_needed;
+                        materialTotals[item.material_name] = item.total_quantity;
                     }
                 });
 
                 const labels = Object.keys(materialTotals);
                 const quantities = Object.values(materialTotals);
 
-                // Define colors for materials
-                const colors = [
-                    'rgba(34, 197, 94, 0.6)',    // Heno - Green
-                    'rgba(59, 130, 246, 0.6)',   // Granos - Blue
-                    'rgba(234, 88, 12, 0.6)',    // Suplemento Vitamínico - Orange
-                    'rgba(251, 146, 60, 0.6)'    // Agua - Light Orange
-                ];
+                const colorMap = {
+                    'Trigo': 'rgba(34, 197, 94, 0.6)',
+                    'Suplemento Vitamínico': 'rgba(234, 179, 8, 0.6)',
+                    'Heno': 'rgba(59, 130, 246, 0.6)',
+                    'Agua': 'rgba(139, 92, 246, 0.6)'
+                };
 
-                // Adjust colors based on number of materials
-                const backgroundColors = labels.map((label, index) => colors[index % colors.length]);
+                const backgroundColors = labels.map(label => colorMap[label] || 'rgba(107, 114, 128, 0.6)');
                 const borderColors = backgroundColors.map(color => color.replace('0.6', '1'));
 
-                // Destroy existing chart if it exists
                 if (materialQuantityChartInstance) materialQuantityChartInstance.destroy();
 
                 const ctx = document.getElementById('materialQuantityChart').getContext('2d');
@@ -177,7 +298,7 @@
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: 'Total Quantity Needed',
+                            label: 'Cantidad Total Necesaria',
                             data: quantities,
                             backgroundColor: backgroundColors,
                             borderColor: borderColors,
@@ -189,7 +310,7 @@
                         plugins: {
                             title: {
                                 display: true,
-                                text: 'Total Materials Needed for 2024',
+                                text: 'Cantidad Total de Materiales Necesarios (2024)',
                                 font: {
                                     size: 18
                                 }
@@ -203,9 +324,8 @@
                 });
             }
 
-            // Function to update material trend chart (Line Chart)
+            // Gráfica de tendencia mensual por material (Line)
             function updateMaterialTrendChart(data) {
-                // Aggregate quantity needed per material per month
                 const materialTrend = {};
 
                 data.forEach(item => {
@@ -213,39 +333,32 @@
                         materialTrend[item.material_name] = {};
                     }
                     if (materialTrend[item.material_name][item.month]) {
-                        materialTrend[item.material_name][item.month] += item.quantity_needed;
+                        materialTrend[item.material_name][item.month] += item.total_quantity;
                     } else {
-                        materialTrend[item.material_name][item.month] = item.quantity_needed;
+                        materialTrend[item.material_name][item.month] = item.total_quantity;
                     }
                 });
 
-                // Define the order of months in Spanish
-                const spanishMonths = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                                       'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-
-                // Prepare datasets
-                const datasets = [];
                 const colors = {
-                    'Heno': 'rgba(34, 197, 94, 0.6)',             // Green
-                    'Granos': 'rgba(59, 130, 246, 0.6)',          // Blue
-                    'Suplemento Vitamínico': 'rgba(234, 88, 12, 0.6)',  // Orange
-                    'Agua': 'rgba(251, 146, 60, 0.6)'             // Light Orange
+                    'Trigo': 'rgba(34, 197, 94, 0.6)',
+                    'Suplemento Vitamínico': 'rgba(234, 179, 8, 0.6)',
+                    'Heno': 'rgba(59, 130, 246, 0.6)',
+                    'Agua': 'rgba(139, 92, 246, 0.6)'
                 };
 
-                Object.keys(materialTrend).forEach(material => {
+                const datasets = Object.keys(materialTrend).map(material => {
                     const quantities = spanishMonths.map(month => materialTrend[material][month] || 0);
-                    datasets.push({
+                    return {
                         label: material,
                         data: quantities,
-                        backgroundColor: colors[material] || 'rgba(107, 114, 128, 0.6)', // Default Gray
-                        borderColor: colors[material] || 'rgba(107, 114, 128, 1)',
-                        borderWidth: 1,
+                        backgroundColor: colors[material] || 'rgba(107, 114, 128, 0.6)',
+                        borderColor: (colors[material] || 'rgba(107, 114, 128, 1)').replace('0.6', '1'),
+                        borderWidth: 2,
                         fill: false,
                         tension: 0.1
-                    });
+                    };
                 });
 
-                // Destroy existing chart if it exists
                 if (materialTrendChartInstance) materialTrendChartInstance.destroy();
 
                 const ctx = document.getElementById('materialTrendChart').getContext('2d');
@@ -260,7 +373,7 @@
                         plugins: {
                             title: {
                                 display: true,
-                                text: 'Monthly Materials Needed in 2024',
+                                text: 'Tendencia Mensual de Materiales (2024)',
                                 font: {
                                     size: 18
                                 }
@@ -289,14 +402,29 @@
                 });
             }
 
-            // Event Listeners for Filters
-            $('#animalFilter').change(fetchMaterialsData);
-            $('#materialFilter').change(fetchMaterialsData);
+            // Eventos
+            $('#animalFilter').change(function() {
+                currentLimit = 60; // Reiniciar el límite cuando cambie el filtro
+                fetchMaterialsData();
+            });
+            $('#materialFilter').change(function() {
+                currentLimit = 60; // Reiniciar el límite cuando cambie el filtro
+                fetchMaterialsData();
+            });
+            $('#limitFilter').change(function() {
+                // Reiniciar el límite local (filas a mostrar) ya que cambiamos el limit remoto
+                currentLimit = 60;
+                fetchMaterialsData();
+            });
 
-            // Initial Data Fetch
+            $('#loadMoreButton').click(function() {
+                currentLimit += increment;
+                fetchMaterialsData();
+            });
+
+            // Carga inicial
             fetchMaterialsData();
         });
     </script>
 </body>
-
 </html>
