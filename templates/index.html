@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Datos de Ventas de Animales</title> 
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+</head>
+
+<body class="bg-green-50 min-h-screen flex flex-col">
+    <nav class="bg-green-700 p-4 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <h2 class="text-white font-bold text-xl">Herramienta de Minería de Datos</h2>
+            <ul class="flex space-x-4">
+                <li><a href="./" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Datos Brutos</a></li>
+                <li><a href="./forecasting" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Pronóstico</a></li>
+                <li><a href="./materials" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Materiales</a></li>
+                <li><a id="graphLink" href="#chartsContainer" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Gráficos</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-5 pt-10 flex-1">
+        <h1 class="text-4xl font-bold mb-5 text-center text-green-800">Bienvenido al Panel de Datos de Ventas de Animales</h1>
+        <p class="text-center text-gray-700 mb-8">
+            Esta página es la herramienta de minería de datos perfecta, donde tenemos todos los datos en un solo lugar. 
+            Aquí, podemos analizar datos brutos, hacer predicciones y administrar los materiales necesarios 
+            para una toma de decisiones efectiva respaldada por nuestros datos completos.
+        </p>
+
+        <div class="flex flex-col md:flex-row justify-center space-y-4 md:space-y-0 md:space-x-4 mb-5">
+            <div>
+                <label for="animalSelect" class="block text-gray-700 mb-1">Seleccione un Animal:</label>
+                <select id="animalSelect" class="border border-green-300 rounded p-2 w-full">
+                    <option value="All">Todos los Animales</option>
+                    {% for animal in animals %}
+                        <option value="{{ animal }}">{{ animal }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="rowSelect" class="block text-gray-700 mb-1">Número de Filas:</label>
+                <select id="rowSelect" class="border border-green-300 rounded p-2 w-full">
+                    <option value="5">Mostrar 5 filas</option>
+                    <option value="10" selected>Mostrar 10 filas</option>
+                    <option value="20">Mostrar 20 filas</option>
+                    <option value="50">Mostrar 50 filas</option>
+                    <option value="100">Mostrar 100 filas</option>
+                    <option value="500">Mostrar 500 filas</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
+                <thead class="bg-green-600 text-white">
+                    <tr>
+                        <th class="border px-4 py-2">Fecha</th>
+                        <th class="border px-4 py-2">Unidades Vendidas</th>
+                        <th class="border px-4 py-2">Ingresos</th>
+                    </tr>
+                </thead>
+                <tbody id="dataBody" class="bg-gray-50">
+                    </tbody>
+            </table>
+        </div>
+
+        <div id="chartsContainer" class="mt-10">
+            <h2 class="text-2xl font-bold mb-5 text-center text-green-800">Gráficos de Datos de Ventas</h2>
+            <div class="flex flex-col md:flex-row space-y-5 md:space-y-0 md:space-x-5">
+                <div class="w-full md:w-1/2">
+                    <canvas id="revenueChart" class="bg-white p-4 rounded shadow"></canvas>
+                </div>
+                <div class="w-full md:w-1/2">
+                    <canvas id="unitsSoldChart" class="bg-white p-4 rounded shadow"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-green-700 py-4">
+        <div class="container mx-auto text-center text-white">
+            &copy; 2024 Pronóstico de Ventas de Animales. Todos los Derechos Reservados.
+        </div>
+    </footer>
+    <!-- JavaScript for Data Fetching and Chart Handling -->
+    <script>
+        $(document).ready(function() {
+            let revenueChartInstance = null;
+            let unitsSoldChartInstance = null;
+
+            // Function to fetch and display data
+            function fetchData() {
+                const selectedAnimal = $('#animalSelect').val() || "All";
+                const rowsToShow = parseInt($('#rowSelect').val());
+
+                let requestUrl = '';
+                if (selectedAnimal === "All" || selectedAnimal === "") {
+                    requestUrl = `/data/All?limit=${rowsToShow}`;
+                } else {
+                    requestUrl = `/data/${selectedAnimal}?limit=${rowsToShow}`;
+                }
+
+                $.getJSON(requestUrl, function(data) {
+                    // Update Table
+                    let rows = '';
+                    data.forEach(item => {
+                        rows += `
+                            <tr class="hover:bg-gray-100 transition">
+                                <td class="border px-4 py-2">${item.date}</td>
+                                <td class="border px-4 py-2">${item.units_sold}</td>
+                                <td class="border px-4 py-2">${item.revenue}</td>
+                            </tr>`;
+                    });
+                    $('#dataBody').html(rows);
+
+                    // Update Charts
+                    updateCharts(data);
+                }).fail(function(jqXHR, textStatus, errorThrown) {
+                    console.error('AJAX Error:', textStatus, errorThrown);
+                    alert('Failed to fetch data. Please try again.');
+                });
+            }
+
+            // Function to update charts
+            function updateCharts(data) {
+                const labels = data.map(item => item.date);
+                const revenueData = data.map(item => item.revenue);
+                const unitsSoldData = data.map(item => item.units_sold);
+
+                // Destroy existing charts if they exist
+                if (revenueChartInstance) revenueChartInstance.destroy();
+                if (unitsSoldChartInstance) unitsSoldChartInstance.destroy();
+
+                const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+                revenueChartInstance = new Chart(revenueCtx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Revenue',
+                            data: revenueData,
+                            backgroundColor: 'rgba(34, 197, 94, 0.2)', // Green
+                            borderColor: 'rgba(34, 197, 94, 1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Revenue Over Time',
+                                font: {
+                                    size: 18
+                                }
+                            },
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Revenue'
+                                }
+                            }
+                        }
+                    }
+                });
+
+                const unitsSoldCtx = document.getElementById('unitsSoldChart').getContext('2d');
+                unitsSoldChartInstance = new Chart(unitsSoldCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Units Sold',
+                            data: unitsSoldData,
+                            backgroundColor: 'rgba(59, 130, 246, 0.6)', // Blue
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Units Sold Over Time',
+                                font: {
+                                    size: 18
+                                }
+                            },
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Units Sold'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Event Listeners
+            $('#animalSelect').change(fetchData);
+            $('#rowSelect').change(fetchData);
+
+            // Scroll to charts when "Graphs" link is clicked
+            $('#graphLink').click(function(event) {
+                event.preventDefault();
+                $('html, body').animate({
+                    scrollTop: $('#chartsContainer').offset().top
+                }, 500);
+            });
+
+            // Initial Data Fetch
+            fetchData();
+        });
+    </script>
+</body>
+
+</html>
