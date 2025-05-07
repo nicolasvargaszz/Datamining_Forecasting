@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Comparación de Ventas - Data Miner Pro</title>
+
+  <!-- Google Fonts & Tailwind -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <!-- Font Awesome -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    integrity="sha512-Fo3rlrZj/k7ujTTXRMvPce2WgjK9K6xx0RnAKEXyxxB5E3F3eXlt1/dnWDbn5Y+xj7FR2YjQHxJXv39fT2Kfeg=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+    }
+    .scrollbar::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    .scrollbar::-webkit-scrollbar-thumb {
+      background-color: #9ca3af;
+      border-radius: 9999px;
+    }
+    .drawer-transition {
+      transition: transform 0.3s ease-in-out;
+    }
+    .fade-in {
+      animation: fadeIn 0.7s ease forwards;
+      opacity: 0;
+    }
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: transform 0.2s ease-in-out;
+    }
+    .sortable { cursor: pointer; }
+    .sort-asc::after {
+      content: "▲";
+      margin-left: 6px;
+      font-size: 0.75rem;
+    }
+    .sort-desc::after {
+      content: "▼";
+      margin-left: 6px;
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen flex flex-col relative">
+
+  <!-- NAVBAR -->
+  <nav class="sticky top-0 bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-700 shadow-md z-50">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center text-white">
+      <!-- LEFT: BRAND -->
+      <div class="flex items-center space-x-3">
+        <a href="/" class="text-2xl font-extrabold tracking-wide flex items-center">
+          <i class="fas fa-database mr-2"></i> DataMiner Pro
+        </a>
+      </div>
+      <!-- RIGHT: NAV & ICONS -->
+      <div class="hidden md:flex items-center space-x-6">
+        <a href="/" class="hover:text-gray-200 transition"><i class="fas fa-home mr-1"></i> Inicio</a>
+        <a href="/forecasting" class="hover:text-gray-200 transition"><i class="fas fa-chart-line mr-1"></i> Pronóstico</a>
+        <a href="/materials" class="hover:text-gray-200 transition"><i class="fas fa-boxes mr-1"></i> Materiales</a>
+        <a href="/comparison" class="hover:text-gray-200 transition"><i class="fas fa-exchange-alt mr-1"></i> Comparación</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HEADER SECTION -->
+  <header class="relative bg-cover bg-center h-48 flex items-center justify-center bg-purple-100">
+    <h1 class="text-3xl md:text-4xl font-extrabold text-purple-700">
+      Comparación de Unidades: Reales vs. Pronóstico
+    </h1>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="container mx-auto px-4 flex-grow py-8">
+    
+    <!-- FILTERS SECTION -->
+    <section id="comparisonFilters" class="mb-8 bg-white rounded-lg shadow p-6 fade-in">
+      <h2 class="text-2xl font-bold text-gray-700 mb-2">Filtros de Comparación</h2>
+      <p class="text-sm text-gray-600 mb-4">
+        Selecciona un producto y un rango de fechas (por defecto 2024-01-01 a 2025-12-31) para comparar las unidades reales vs. pronosticadas.
+      </p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Product Filter (Populated by Jinja) -->
+        <div>
+          <label for="compProductSelect" class="block text-gray-600 font-semibold mb-1">Producto</label>
+          <select
+            id="compProductSelect"
+            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          >
+            {% for prod in forecast_products %}
+              <option value="{{ prod }}">{{ prod }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <!-- Start Date -->
+        <div>
+          <label for="compStartDate" class="block text-gray-600 font-semibold mb-1">Fecha Inicio</label>
+          <input
+            id="compStartDate"
+            type="date"
+            value="2024-01-01"
+            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+        </div>
+        <!-- End Date -->
+        <div>
+          <label for="compEndDate" class="block text-gray-600 font-semibold mb-1">Fecha Fin</label>
+          <input
+            id="compEndDate"
+            type="date"
+            value="2025-12-31"
+            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+        </div>
+      </div>
+      <div class="mt-6">
+        <button
+          id="fetchComparisonBtn"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow transition"
+        >
+          <i class="fas fa-sync-alt mr-1"></i> Actualizar Comparación
+        </button>
+        <button
+          id="openTableBtn"
+          class="bg-pink-600 hover:bg-pink-700 text-white font-semibold py-2 px-4 rounded shadow transition ml-4"
+        >
+          <i class="fas fa-table mr-1"></i> Ver Tabla
+        </button>
+      </div>
+    </section>
+
+    <!-- STATS CARDS FOR ERRORS -->
+    <section id="comparisonStats" class="mb-8 fade-in">
+      <h2 class="text-2xl font-bold text-gray-700 mb-4">Indicadores de Error</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Card 1: Total Points -->
+        <div class="bg-white card border border-gray-200 rounded-lg shadow p-6 text-center">
+          <i class="fas fa-list-ol text-indigo-600 text-4xl mb-2"></i>
+          <h3 class="text-xl font-semibold text-gray-700 mb-2">Total de Puntos</h3>
+          <p id="statTotalPoints" class="text-3xl font-bold text-indigo-600">0</p>
+        </div>
+        <!-- Card 2: MAE -->
+        <div class="bg-white card border border-gray-200 rounded-lg shadow p-6 text-center">
+          <i class="fas fa-balance-scale text-indigo-600 text-4xl mb-2"></i>
+          <h3 class="text-xl font-semibold text-gray-700 mb-2">MAE (Error Absoluto Medio)</h3>
+          <p id="statMAE" class="text-3xl font-bold text-indigo-600">0</p>
+        </div>
+        <!-- Card 3: MAPE -->
+        <div class="bg-white card border border-gray-200 rounded-lg shadow p-6 text-center">
+          <i class="fas fa-percentage text-indigo-600 text-4xl mb-2"></i>
+          <h3 class="text-xl font-semibold text-gray-700 mb-2">MAPE (%)</h3>
+          <p id="statMAPE" class="text-3xl font-bold text-indigo-600">0</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPARISON CHART -->
+    <section id="comparisonCharts" class="mb-8 fade-in">
+      <h2 class="text-2xl font-bold text-gray-700 mb-4">Gráfico Comparativo</h2>
+      <div class="bg-white card border border-gray-200 rounded-lg shadow p-4 relative">
+        <h3 class="text-lg font-bold text-gray-700 mb-2">Unidades Reales vs. Pronosticadas</h3>
+        <canvas id="comparisonChart" height="140"></canvas>
+        <button
+          class="absolute top-2 right-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-1 px-2 rounded text-sm"
+          id="previewCompChartBtn"
+        >
+          Preview
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- TABLE DRAWER -->
+  <div
+    id="comparisonTableDrawer"
+    class="fixed top-0 right-0 w-full md:w-2/5 h-full bg-white shadow-2xl transform translate-x-full drawer-transition z-50"
+  >
+    <div class="bg-gradient-to-r from-purple-600 to-pink-600 text-white flex justify-between items-center px-4 py-4">
+      <h2 class="text-xl font-bold">Tabla de Comparación</h2>
+      <div class="relative group">
+        <button class="focus:outline-none hover:bg-pink-700 rounded px-3 py-1 transition text-sm">
+          <i class="fas fa-columns"></i> Columnas
+        </button>
+        <div
+          class="absolute right-0 mt-2 bg-white text-gray-700 rounded shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transform group-hover:translate-y-1 transition-all"
+        >
+          <div class="py-2 w-48 flex flex-col space-y-1 px-4">
+            <label><input type="checkbox" class="colToggle" data-col="0" checked> Fecha</label>
+            <label><input type="checkbox" class="colToggle" data-col="1" checked> Unidades Reales</label>
+            <label><input type="checkbox" class="colToggle" data-col="2" checked> Unidades Pronost.</label>
+            <label><input type="checkbox" class="colToggle" data-col="3" checked> Error</label>
+            <label><input type="checkbox" class="colToggle" data-col="4" checked> % Error</label>
+          </div>
+        </div>
+      </div>
+      <button
+        id="closeTableBtn"
+        class="text-white hover:bg-pink-700 rounded px-3 py-1 transition"
+      >
+        <i class="fas fa-times"></i> Cerrar
+      </button>
+    </div>
+    <div class="p-4 h-full overflow-y-auto scrollbar">
+      <table class="min-w-full text-gray-700" id="comparisonDataTable">
+        <thead class="bg-pink-50 sticky top-0">
+          <tr>
+            <th class="px-4 py-2 font-semibold border-b border-gray-200 text-left sortable" data-field="date">
+              Fecha
+            </th>
+            <th class="px-4 py-2 font-semibold border-b border-gray-200 text-left sortable" data-field="actual">
+              Unidades Reales
+            </th>
+            <th class="px-4 py-2 font-semibold border-b border-gray-200 text-left sortable" data-field="forecast">
+              Unidades Pronost.
+            </th>
+            <th class="px-4 py-2 font-semibold border-b border-gray-200 text-left" data-field="errorAbs">
+              Error
+            </th>
+            <th class="px-4 py-2 font-semibold border-b border-gray-200 text-left" data-field="errorPct">
+              % Error
+            </th>
+          </tr>
+        </thead>
+        <tbody id="comparisonBody" class="divide-y divide-gray-100">
+          <!-- Populated via JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CHART PREVIEW MODAL -->
+  <div id="compChartPreviewModal" class="fixed inset-0 hidden z-50 items-center justify-center bg-black bg-opacity-50">
+    <div class="bg-white rounded-lg shadow-lg w-11/12 md:w-2/3 xl:w-1/2 p-4 relative">
+      <button
+        id="closeCompPreviewBtn"
+        class="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
+      >
+        <i class="fas fa-times fa-lg"></i>
+      </button>
+      <canvas id="compChartPreviewCanvas" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-700 text-white py-6 mt-8">
+    <div class="container mx-auto text-center text-sm">
+      &copy; 2025 Data Miner Pro. Comparación de Unidades Vendidas.
+    </div>
+  </footer>
+
+  <!-- MAIN SCRIPT -->
+  <script>
+    /* GLOBALS */
+    let comparisonDataCache = [];
+    let comparisonChartInstance = null;
+  
+
+    /* 3) Calculate and Display Error Metrics (MAE, MAPE) */
+      function updateErrorMetrics(data) {
+        const totalPoints = data.length;
+        let sumAbsError = 0;  // Para MAE
+        let sumPctError = 0;  // Para MAPE
+
+        data.forEach(row => {
+          const actual = row.actual;
+          const forecast = row.forecast;
+          const error = Math.abs(actual - forecast);
+          sumAbsError += error;
+
+          // Evitar división por cero
+          if (actual !== 0) {
+            sumPctError += (error / actual) * 100;
+          }
+        });
+
+        const mae = totalPoints > 0 ? (sumAbsError / totalPoints) : 0;
+        const mape = totalPoints > 0 ? (sumPctError / totalPoints) : 0;
+
+        // Mostrar los valores en la UI
+        $("#statTotalPoints").text(totalPoints);
+        $("#statMAE").text(mae.toFixed(2));
+        $("#statMAPE").text(mape.toFixed(2));
+      }
+
+    /* 1) Initialize the Comparison Chart */
+    function initComparisonChart() {
+      const ctx = document.getElementById("comparisonChart").getContext("2d");
+      comparisonChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Ventas Reales',
+              data: [],
+              borderColor: 'rgba(75, 192, 192, 1)',
+              backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              fill: true,
+              tension: 0.3
+            },
+            {
+              label: 'Pronóstico (yhat)',
+              data: [],
+              borderColor: 'rgba(255, 99, 132, 1)',
+              backgroundColor: 'rgba(255, 99, 132, 0.2)',
+              fill: true,
+              tension: 0.3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              title: { display: true, text: 'Fecha' }
+            },
+            y: {
+              title: { display: true, text: 'Unidades Vendidas' },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+  
+    /* 2) Update Chart with Fetched Data */
+    function updateComparisonChart(data) {
+      const labels = data.map(d => d.date);
+      const actualValues = data.map(d => d.actual);
+      const forecastValues = data.map(d => d.forecast);
+  
+      comparisonChartInstance.data.labels = labels;
+      comparisonChartInstance.data.datasets[0].data = actualValues;
+      comparisonChartInstance.data.datasets[1].data = forecastValues;
+      comparisonChartInstance.update();
+    }
+  
+    /* 3) Fetch Data from /comparison_data endpoint */
+    function fetchComparisonData() {
+      const product = $("#compProductSelect").val() || "All";
+      const startDate = $("#compStartDate").val() || "2024-01-01";
+      const endDate = $("#compEndDate").val() || "2025-12-31";
+
+      const url = `/comparison_data?product=${product}&start_date=${startDate}&end_date=${endDate}`;
+      $.getJSON(url, function(response){
+        comparisonDataCache = response;
+        updateComparisonChart(response);
+        updateErrorMetrics(response);  // <-- Calcula y muestra errores
+      }).fail(function(xhr, status, error){
+        console.error("Error fetching comparison data:", status, error);
+        alert("No se pudo obtener datos de comparación.");
+      });
+    }
+
+  
+    /* MAIN onReady */
+    $(document).ready(function(){ 
+      initComparisonChart();
+      fetchComparisonData();
+  
+      // Button handlers
+      $("#fetchComparisonBtn").click(fetchComparisonData);
+    });
+  </script>
+  
+  </body>
+</html>

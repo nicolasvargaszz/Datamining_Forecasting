@@ -26,3 +26,13 @@ Thumbs.db
 # Otros archivos que no quieras subir
 /secret-key.txt
 /database.sqlite3
+instance/
+forecasts/
+forecast_positivos/
+.ipynb_checkpoints/
+__pycache__/
+.venv/
+mejores_productos/
+migrations/
+my_env/
+*.csv

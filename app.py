@@ -4,6 +4,9 @@ from flask_migrate import Migrate
 from datetime import datetime
 import pandas as pd
 import os
+import unicodedata
+import re
+
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sales_data.db'
@@ -11,329 +14,466 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+merged_df = pd.read_csv('merged_data.csv', parse_dates=['ds'])
 
 # ------------------------------------------------------------------------------------
 # MODELOS DE BASE DE DATOS
 # ------------------------------------------------------------------------------------
-
-class SalesData(db.Model):
+class RawSalesData(db.Model):
+    """
+    Almacena los datos crudos de VENTAS_TROCIUK3.csv (ventas reales).
+    """
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False)
-    animal = db.Column(db.String(50), nullable=False)
+    cod_articulo = db.Column(db.String(50), nullable=False)
+    product = db.Column(db.String(100), nullable=False)
     units_sold = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Integer, nullable=False)
     revenue = db.Column(db.Integer, nullable=False)
 
-class MaterialNeeded(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    month = db.Column(db.String(20), nullable=False)
-    material_name = db.Column(db.String(50), nullable=False)
-    animal_food = db.Column(db.String(50), nullable=False)
-    quantity_needed = db.Column(db.Float, nullable=False)
-
-    def to_dict(self):
-        return {
-            'month': self.month,
-            'material_name': self.material_name,
-            'animal_food': self.animal_food,
-            'quantity_needed': self.quantity_needed
-        }
-
-class MaterialSummary(db.Model):
+class ForecastData(db.Model):
     """
-    Tabla resumen que agrupa los datos de MaterialNeeded por mes, animal y material.
-    Almacena la suma total de quantity_needed.
+    Almacena los datos de merged_data.csv (pronósticos).
     """
     id = db.Column(db.Integer, primary_key=True)
-    month = db.Column(db.String(20), nullable=False)
-    material_name = db.Column(db.String(50), nullable=False)
-    animal_food = db.Column(db.String(50), nullable=False)
-    total_quantity = db.Column(db.Float, nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    product = db.Column(db.String(100), nullable=False)
+    forecast_units = db.Column(db.Integer, nullable=False)
+    price = db.Column(db.Integer, nullable=True)
+    revenue = db.Column(db.Integer, nullable=True)
 
-    def to_dict(self):
-        return {
-            'month': self.month,
-            'material_name': self.material_name,
-            'animal_food': self.animal_food,
-            'total_quantity': self.total_quantity
-        }
+class MaterialData(db.Model):
+    """
+    Almacena los datos de materials.csv (materia prima inventada).
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    material_id = db.Column(db.String(50), nullable=False)
+    material_name = db.Column(db.String(100), nullable=False)
+    category = db.Column(db.String(50), nullable=False)
+    date_needed = db.Column(db.Date, nullable=False)
+    quantity_kg = db.Column(db.Integer, nullable=False)
+    cost_per_kg = db.Column(db.Integer, nullable=False)
+    total_cost = db.Column(db.Integer, nullable=False)
 
 # ------------------------------------------------------------------------------------
 # FUNCIONES DE CARGA DE DATOS
 # ------------------------------------------------------------------------------------
-
-def load_sales_data(csv_path):
+def load_raw_data(csv_path):
+    """
+    Lee VENTAS_TROCIUK3.csv, con formato de fecha dd/mm/yyyy,
+    y devuelve registros para insertar en RawSalesData.
+    """
     if not os.path.exists(csv_path):
-        print(f"Archivo de datos de ventas '{csv_path}' no encontrado.")
+        print(f"[ERROR] Archivo de datos crudos '{csv_path}' no encontrado.")
         return []
 
-    df = pd.read_csv(csv_path)
-    required_columns = ['Date', 'Animal', 'Price (Miles de Guaranies)', 'Units Sold']
-    if not all(col in df.columns for col in required_columns):
-        print(f"Faltan columnas requeridas en el CSV de ventas. Columnas encontradas: {df.columns.tolist()}")
+    df = pd.read_csv(csv_path, encoding="latin-1", on_bad_lines="skip")
+    # Limpieza de columnas
+    df.columns = df.columns.str.strip().str.replace('"', '', regex=False)
+    df.columns = df.columns.str.replace('\ufeff', '', regex=False)
+    df.columns = df.columns.str.replace('\r', '', regex=False)
+    df.columns = df.columns.str.replace('\n', '', regex=False)
+    df.columns = df.columns.str.replace('\u200b', '', regex=False)
+    df.columns = df.columns.str.replace('\xa0', '', regex=False)
+    df.columns = df.columns.str.replace(r'[^\x00-\x7F]+', '', regex=True)
+
+    print("----- CSV Column Debug (Raw Data) -----")
+    print("Detected columns after cleanup:", df.columns.tolist())
+    print("----------------------------------------")
+
+    required_cols = ['FECHA', 'COD_ARTICULO', 'DESCRIPCION', 'TOTAL_CANTIDAD', 'PRECIO_UNITARIO']
+    if not all(col in df.columns for col in required_cols):
+        print(f"[ERROR] Faltan columnas requeridas. Expected: {required_cols}")
         return []
 
-    df.rename(columns={
-        'Date': 'date',
-        'Animal': 'animal',
-        'Price (Miles de Guaranies)': 'price',
-        'Units Sold': 'units_sold'
-    }, inplace=True)
+    # Convert FECHA a datetime (dd/mm/yyyy)
+    df['FECHA'] = pd.to_datetime(df['FECHA'], format='%d/%m/%Y', errors='coerce')
 
     records = []
     for _, row in df.iterrows():
-        try:
-            date_val = datetime.strptime(row['date'], '%Y-%m-%d')
-            record = SalesData(
-                date=date_val,
-                animal=row['animal'],
-                units_sold=row['units_sold'],
-                price=row['price'],
-                revenue=row['units_sold'] * row['price']
-            )
-            records.append(record)
-        except Exception as e:
-            print(f"Error procesando la fila {row}: {e}")
+        if pd.isnull(row['FECHA']) or pd.isnull(row['DESCRIPCION']):
+            continue
+
+        fecha = row['FECHA'].date()
+        cod_art = str(row['COD_ARTICULO'])
+        descr = str(row['DESCRIPCION'])
+        units_sold = int(row['TOTAL_CANTIDAD'])
+        price = int(row['PRECIO_UNITARIO'])
+        revenue = units_sold * price
+
+        record = RawSalesData(
+            date=fecha,
+            cod_articulo=cod_art,
+            product=descr,
+            units_sold=units_sold,
+            price=price,
+            revenue=revenue
+        )
+        records.append(record)
+
+    return records
+
+def load_forecast_data(csv_path):
+    """
+    Lee merged_data.csv y devuelve registros para ForecastData.
+    Columnas esenciales: ds, yhat, PRODUCT
+    - ds = fecha pronosticada
+    - yhat = unidades pronosticadas
+    - PRODUCT = producto
+    """
+    if not os.path.exists(csv_path):
+        print(f"[ERROR] Archivo de pronóstico '{csv_path}' no encontrado.")
+        return []
+
+    df = pd.read_csv(csv_path, encoding="latin-1", on_bad_lines="skip")
+    # Limpieza
+    df.columns = df.columns.str.strip().str.replace('"', '', regex=False)
+    df.columns = df.columns.str.replace('\ufeff', '', regex=False)
+    df.columns = df.columns.str.replace(r'[^\x00-\x7F]+', '', regex=True)
+
+    print("----- CSV Column Debug (Forecast) -----")
+    print("Detected columns after cleanup:", df.columns.tolist())
+    print("----------------------------------------")
+
+    required_cols = ['ds', 'yhat', 'PRODUCT']
+    if not all(col in df.columns for col in required_cols):
+        print(f"[ERROR] Faltan columnas requeridas: {required_cols}")
+        return []
+
+    df['ds'] = pd.to_datetime(df['ds'], errors='coerce')
+
+    # If there's a PRECIO_UNITARIO, rename to PRICE
+    if 'PRECIO_UNITARIO' in df.columns:
+        df.rename(columns={'PRECIO_UNITARIO': 'PRICE'}, inplace=True)
+        print("[DEBUG] 'PRECIO_UNITARIO' column found and renamed to 'PRICE'.")
+    if 'PRICE' not in df.columns:
+        df['PRICE'] = 0
+
+    records = []
+    for _, row in df.iterrows():
+        if pd.isnull(row['ds']) or pd.isnull(row['PRODUCT']):
+            continue
+
+        forecast_units = int(round(row['yhat']))
+        price = int(round(row['PRICE']))
+        revenue = forecast_units * price
+
+        record = ForecastData(
+            date=row['ds'].date(),
+            product=str(row['PRODUCT']),
+            forecast_units=forecast_units,
+            price=price,
+            revenue=revenue
+        )
+        records.append(record)
+
+    return records
+
+def load_material_data(csv_path):
+    """
+    Lee materials.csv y devuelve registros para MaterialData.
+    """
+    if not os.path.exists(csv_path):
+        print(f"[ERROR] Archivo de materiales '{csv_path}' no encontrado.")
+        return []
+
+    df = pd.read_csv(csv_path, encoding="utf-8", on_bad_lines="skip")
+    df.columns = df.columns.str.strip().str.replace(r'[^\x00-\x7F]+', '', regex=True)
+
+    print("----- CSV Column Debug (Materials) -----")
+    print("Detected columns:", df.columns.tolist())
+    print("----------------------------------------")
+
+    required_cols = [
+        'MaterialID', 'MaterialName', 'Category',
+        'DateNeeded', 'QuantityKG', 'CostPerKG', 'TotalCost'
+    ]
+    if not all(col in df.columns for col in required_cols):
+        print(f"[ERROR] Faltan columnas requeridas en materials.csv: {required_cols}")
+        return []
+
+    df['DateNeeded'] = pd.to_datetime(df['DateNeeded'], errors='coerce')
+
+    records = []
+    for _, row in df.iterrows():
+        if pd.isnull(row['DateNeeded']) or pd.isnull(row['MaterialID']):
+            continue
+
+        record = MaterialData(
+            material_id=str(row['MaterialID']),
+            material_name=str(row['MaterialName']),
+            category=str(row['Category']),
+            date_needed=row['DateNeeded'].date(),
+            quantity_kg=int(row['QuantityKG']),
+            cost_per_kg=int(row['CostPerKG']),
+            total_cost=int(row['TotalCost'])
+        )
+        records.append(record)
     return records
 
 # ------------------------------------------------------------------------------------
-# INICIALIZACIÓN DE LA BASE DE DATOS Y CARGA DE DATOS
+# RUTAS PRINCIPALES
 # ------------------------------------------------------------------------------------
-
-with app.app_context():
-    db.create_all()
-
-    # Cargar datos de ventas si no existen
-    if SalesData.query.first() is None:
-        sales_records = load_sales_data("Supermix_Sales_data.csv")
-        if sales_records:
-            db.session.bulk_save_objects(sales_records)
-            db.session.commit()
-            print("Datos de ventas cargados en la base de datos.")
-        else:
-            print("No se cargaron datos de ventas.")
-
-    # Definir la materia prima necesaria por unidad para cada animal
-    data_comida = {
-        'Animal': ['Cow', 'Horses', 'Pig', 'Chicken'],
-        'Trigo_g': [1, 0.8, 0.5, 0.2],
-        'Suplemento_Vitaminico_g': [0.2, 0.14, 0.1, 0.05],
-        'Heno_g': [3, 2, 1, 0.5],
-        'Agua_g': [0.5, 0.6, 0.3, 0.2]
-    }
-    df_comida = pd.DataFrame(data_comida)
-
-    # Cargar el CSV de pronósticos
-    forecast_csv = "Combined_Sales_Data_forecast.csv"
-    if os.path.exists(forecast_csv):
-        df_forecast = pd.read_csv(forecast_csv)
-
-        required_columns = ['ds', 'yhat', 'Animal']
-        if all(col in df_forecast.columns for col in required_columns):
-            # Convertir ds a datetime y extraer mes en español
-            df_forecast['ds'] = pd.to_datetime(df_forecast['ds'])
-            df_forecast['month_en'] = df_forecast['ds'].dt.strftime('%B')
-
-            english_to_spanish_months = {
-                'January': 'Enero', 'February': 'Febrero', 'March': 'Marzo', 'April': 'Abril',
-                'May': 'Mayo', 'June': 'Junio', 'July': 'Julio', 'August': 'Agosto',
-                'September': 'Septiembre', 'October': 'Octubre', 'November': 'Noviembre', 'December': 'Diciembre'
-            }
-
-            df_forecast['month'] = df_forecast['month_en'].map(english_to_spanish_months)
-            df_forecast['units_sold'] = df_forecast['yhat'].round().astype(int)
-
-            # Unir con df_comida
-            df_merged = pd.merge(df_forecast, df_comida, left_on='Animal', right_on='Animal', how='inner')
-
-            # Materiales a considerar
-            materiales = ['Trigo_g', 'Suplemento_Vitaminico_g', 'Heno_g', 'Agua_g']
-
-            # Calcular las cantidades necesarias
-            materiales_result = []
-            for _, row in df_merged.iterrows():
-                mes = row['month']
-                animal = row['Animal']
-                units = row['units_sold']
-
-                for mat in materiales:
-                    mat_name = mat.replace('_g', '').replace('_', ' ')
-                    cantidad = int(units * row[mat])  # redondear a entero
-                    materiales_result.append({
-                        'month': mes,
-                        'material_name': mat_name,
-                        'animal_food': animal,
-                        'quantity_needed': cantidad
-                    })
-
-            # Limpiar la tabla MaterialNeeded y MaterialSummary si se desea refrescar los datos
-            MaterialNeeded.query.delete()
-            MaterialSummary.query.delete()
-            db.session.commit()
-
-            # Insertar datos en MaterialNeeded
-            material_records = [MaterialNeeded(**item) for item in materiales_result]
-            db.session.bulk_save_objects(material_records)
-            db.session.commit()
-
-            print("Datos detallados de materiales cargados en la base de datos.")
-
-            # Crear la tabla resumida
-            # Agrupar por mes, animal_food, material_name y sumar quantity_needed
-            df_materials = pd.DataFrame(materiales_result)
-            df_summary = df_materials.groupby(['month', 'animal_food', 'material_name'], as_index=False)['quantity_needed'].sum()
-            df_summary.rename(columns={'quantity_needed': 'total_quantity'}, inplace=True)
-
-            # Insertar en MaterialSummary
-            summary_records = [MaterialSummary(**row) for row in df_summary.to_dict(orient='records')]
-            db.session.bulk_save_objects(summary_records)
-            db.session.commit()
-
-            print("Tabla resumida de materiales cargada en la base de datos.")
-
-        else:
-            print("Faltan columnas requeridas en el CSV de pronóstico.")
-    else:
-        print(f"No se encontró el archivo de pronóstico '{forecast_csv}'.")
-
-# ------------------------------------------------------------------------------------
-# RUTAS
-# ------------------------------------------------------------------------------------
-
 @app.route('/')
 def index():
-    animals = SalesData.query.with_entities(SalesData.animal).distinct().all()
-    return render_template("index.html", animals=[animal[0] for animal in animals])
+    products = RawSalesData.query.with_entities(RawSalesData.product).distinct().all()
+    product_list = [p[0] for p in products]
+    print("[INFO] User visited / (Datos Crudos). Products found:", product_list)
+    return render_template("index.html", animals=product_list)
 
-@app.route('/forecasting', methods=['GET'])
+@app.route('/forecasting')
 def forecasting():
-    limit = request.args.get('limit', default=10, type=int)
-    selected_animal = request.args.get('animal', default=None)
+    """
+    Muestra la página de pronósticos usando ForecastData (cargado desde merged_data.csv).
+    """
+    products = ForecastData.query.with_entities(ForecastData.product).distinct().all()
+    product_list = ["All"] + [p[0] for p in products]
 
-    forecast_csv = "Combined_Sales_Data_forecast.csv"
-    if not os.path.exists(forecast_csv):
-        print(f"Archivo de pronóstico '{forecast_csv}' no encontrado.")
-        return render_template("forecasting.html", data=[], animals=["All"])
+    default_limit = 10
+    forecast_data = ForecastData.query.order_by(ForecastData.date).limit(default_limit).all()
 
-    df_forecast = pd.read_csv(forecast_csv)
-    df_forecast.rename(columns={'ds': 'Mes', 'Animal': 'Animal', 'yhat': 'Forecast_Ventas'}, inplace=True)
+    data_for_template = []
+    for row in forecast_data:
+        data_for_template.append({
+            'date': row.date.strftime('%Y-%m-%d'),
+            'Animal': row.product,
+            'units_sold': row.forecast_units,
+            'revenue': row.revenue
+        })
 
-    required_columns = ['Mes', 'Forecast_Ventas']
-    if not all(col in df_forecast.columns for col in required_columns):
-        print("Faltan columnas requeridas en el CSV de pronóstico.")
-        return render_template("forecasting.html", data=[], animals=["All"])
+    print("[INFO] User visited /forecasting. Distinct products:", product_list)
+    return render_template("forecasting.html", data=data_for_template, animals=product_list)
 
-    if selected_animal and selected_animal != "All":
-        df_forecast = df_forecast[df_forecast['Animal'] == selected_animal]
-
-    df_forecast['units_sold'] = df_forecast['Forecast_Ventas'].round().astype(int)
-    price_mapping = {
-        "Horses": 70000,
-        "Cows": 50000,
-        "Pig": 30000,
-        "Chickens": 20000
-    }
-    df_forecast['revenue'] = df_forecast.apply(lambda row: row['units_sold'] * price_mapping.get(row['Animal'], 0), axis=1)
-
-    df_forecast_limited = df_forecast.head(limit)
-    data = df_forecast_limited[['Mes', 'Animal', 'units_sold', 'revenue']].to_dict(orient='records')
-    animals = ["All"] + df_forecast['Animal'].unique().tolist()
-
-    return render_template("forecasting.html", data=data, animals=animals)
-
-@app.route('/forecast_data/<animal>', methods=['GET'])
-def forecast_data(animal):
-    limit = request.args.get('limit', default=100, type=int)
-    forecast_csv = "Combined_Sales_Data_forecast.csv"
-
-    if not os.path.exists(forecast_csv):
-        return jsonify([])
-
-    df_forecast = pd.read_csv(forecast_csv)
-    required_columns = ['ds', 'yhat', 'Animal']
-    if not all(col in df_forecast.columns for col in required_columns):
-        return jsonify([])
-
-    df_forecast['ds'] = pd.to_datetime(df_forecast['ds'])
-
-    # Filter data from 2024-01-01 onwards
-    start_date = datetime(2024, 1, 1) 
-    df_forecast = df_forecast[df_forecast['ds'] >= start_date]
-
-    if animal == "All":
-        sales_data = df_forecast.head(limit)
-    else:
-        sales_data = df_forecast[df_forecast['Animal'] == animal].head(limit)
-
-    sales_data['date'] = sales_data['ds'].dt.strftime('%Y-%m-%d')
-    sales_data = sales_data.rename(columns={'Animal': 'animal_food', 'yhat': 'units_sold'})
-    price_mapping = {
-        "Horses": 70000,
-        "Cow": 50000,
-        "Pig": 30000,
-        "Chicken": 20000
-    }
-    sales_data['units_sold'] = sales_data['units_sold'].round().astype(int)
-    sales_data['revenue'] = sales_data.apply(lambda row: row['units_sold'] * price_mapping.get(row['animal_food'], 0), axis=1)
-
-    data = sales_data[['date', 'animal_food', 'units_sold', 'revenue']].to_dict(orient='records')
-    return jsonify(data)
-
-@app.route('/data/<animal>', methods=['GET'])
-def data_route(animal):
-    limit = request.args.get('limit', default=100, type=int)
-
-    if animal == "All":
-        sales_data = SalesData.query.limit(limit).all()
-    else:
-        sales_data = SalesData.query.filter_by(animal=animal).limit(limit).all()
-
-    data = [{
-        'date': sale.date.strftime('%Y-%m-%d'),
-        'units_sold': sale.units_sold,
-        'revenue': sale.revenue
-    } for sale in sales_data]
-
-    return jsonify(data)
-
-@app.route('/materials', methods=['GET'])
-def materials():
+@app.route('/materials')
+def materials_page():
+    print("[INFO] User visited /materials (Materias Primas).")
     return render_template("materials.html")
 
-@app.route('/materials_data', methods=['GET'])
-def materials_data():
-    materials = MaterialNeeded.query.all()
-    data = [material.to_dict() for material in materials]
+# ------------------------------------------------------------------------------------
+# RUTAS DE API PARA DATOS CRUDOS
+# ------------------------------------------------------------------------------------
+@app.route('/data/<descripcion>', methods=['GET'])
+def data_route(descripcion):
+    limit = request.args.get('limit', default=10, type=int)
+    start_date = request.args.get('start_date', default=None)
+    end_date = request.args.get('end_date', default=None)
+    selected_year = request.args.get('year', default=None)
+
+    query = RawSalesData.query
+
+    if descripcion != "All":
+        query = query.filter_by(product=descripcion)
+
+    if selected_year and selected_year != "All":
+        query = query.filter(db.extract('year', RawSalesData.date) == int(selected_year))
+    else:
+        if start_date:
+            query = query.filter(RawSalesData.date >= start_date)
+        if end_date:
+            query = query.filter(RawSalesData.date <= end_date)
+
+    rows = query.order_by(RawSalesData.date).limit(limit).all()
+
+    data = [{
+        "fecha": row.date.strftime("%Y-%m-%d"),
+        "cod_articulo": row.cod_articulo,
+        "descripcion": row.product,
+        "total_cantidad": row.units_sold,
+        "precio_unitario": row.price
+    } for row in rows]
+
     return jsonify(data)
 
-@app.route('/materials_summary_data', methods=['GET'])
-def materials_summary_data():
+
+# ------------------------------------------------------------------------------------
+# RUTAS DE API PARA DATOS DE PRONÓSTICO
+# ------------------------------------------------------------------------------------
+@app.route('/forecast_data/<product>', methods=['GET'])
+def forecast_data_route(product):
     """
-    Endpoint para obtener los datos resumidos con posibilidad de limitar la cantidad.
-    Parámetro ?limit=x
-    Opciones: 0, 10, 100, 1000, 10000
-    Si limit=0, retorna todos los datos.
+    Devuelve JSON de ForecastData (merged_data.csv).
+    Soporta ?limit= & ?start_date= para filtrar pronóstico a partir de 2024, etc.
     """
-    limit = request.args.get('limit', default=0, type=int)
-    start_date_str = request.args.get('start_date', default='2024-01-01') 
+    limit = request.args.get('limit', default=100, type=int)
+    start_date_str = request.args.get('start_date', default='2024-01-01')
 
     try:
         start_date = datetime.fromisoformat(start_date_str)
     except ValueError:
-        return jsonify({'error': 'Invalid start_date format. Use ISO 8601 format (e.g., 2024-01-01)'}), 400 
+        start_date = None
 
-    query = MaterialSummary.query
+    query = ForecastData.query
+    if start_date:
+        query = query.filter(ForecastData.date >= start_date)
+    if product != "All":
+        query = query.filter(ForecastData.product == product)
 
-    # Filter data from 2024-01-01 onwards
-    query = query.filter(MaterialSummary.month >= start_date.strftime('%M')) 
+    forecast_data = query.order_by(ForecastData.date).limit(limit).all()
+    data = []
+    for row in forecast_data:
+        data.append({
+            'date': row.date.strftime('%Y-%m-%d'),
+            'product': row.product,
+            'units_sold': row.forecast_units,
+            'revenue': row.revenue
+        })
 
-    if limit > 0:
-        summaries = query.limit(limit).all()
-    else:
-        summaries = query.all()
-
-    data = [s.to_dict() for s in summaries]
+    print(f"[INFO] JSON request for /forecast_data/{product}?limit={limit}&start_date={start_date_str}. Rows: {len(data)}")
     return jsonify(data)
 
+# ------------------------------------------------------------------------------------
+# RUTA DE API PARA DATOS DE MATERIALES
+# ------------------------------------------------------------------------------------
+@app.route('/materials_data', methods=['GET'])
+def materials_data_route():
+    limit = request.args.get('limit', default=1000, type=int)
+    category_filter = request.args.get('category', default='All', type=str)
+    min_stock = request.args.get('min_stock', default=0, type=int)
+
+    query = MaterialData.query
+    if category_filter != "All":
+        query = query.filter(MaterialData.category == category_filter)
+    if min_stock > 0:
+        query = query.filter(MaterialData.quantity_kg >= min_stock)
+
+    materials_data = query.order_by(MaterialData.material_id).limit(limit).all()
+    data = []
+    for row in materials_data:
+        data.append({
+            'id': row.material_id,
+            'nombre': row.material_name,
+            'categoria': row.category,
+            'stock': row.quantity_kg,
+            'cost': row.total_cost
+        })
+
+    print(f"[INFO] JSON request for /materials_data?category={category_filter}&min_stock={min_stock}&limit={limit}. Rows: {len(data)}")
+    return jsonify(data)
+
+
+# ------------------------------------------------------------------------------------
+# COMANDOS FLASK PARA CARGAR DATOS
+# ------------------------------------------------------------------------------------
+@app.cli.command("load-data")
+def load_data_command():
+    """
+    1) Borra registros antiguos de RawSalesData & ForecastData.
+    2) Carga VENTAS_TROCIUK3.csv -> RawSalesData.
+    3) Carga merged_data.csv -> ForecastData.
+    4) Muestra conteos.
+    """
+    print("[INFO] Starting data load...")
+
+    db.session.query(RawSalesData).delete()
+    db.session.query(ForecastData).delete()
+    db.session.commit()
+    print("[INFO] Old data cleared from RawSalesData & ForecastData.")
+
+    # Cargar VENTAS_TROCIUK3.csv (real data)
+    raw_records = load_raw_data("VENTAS_TROCIUK3.csv")
+    if raw_records:
+        db.session.bulk_save_objects(raw_records)
+        db.session.commit()
+        print(f"[SUCCESS] Inserted {len(raw_records)} rows into RawSalesData.")
+    else:
+        print("[WARNING] No RawSalesData rows inserted.")
+
+    # Cargar merged_data.csv (forecast)
+    forecast_records = load_forecast_data("merged_data.csv")
+    if forecast_records:
+        db.session.bulk_save_objects(forecast_records)
+        db.session.commit()
+        print(f"[SUCCESS] Inserted {len(forecast_records)} rows into ForecastData.")
+    else:
+        print("[WARNING] No ForecastData rows inserted.")
+
+    raw_count = RawSalesData.query.count()
+    fore_count = ForecastData.query.count()
+    print(f"[INFO] Final RawSalesData count: {raw_count}")
+    print(f"[INFO] Final ForecastData count: {fore_count}")
+    print("[INFO] load-data command finished.")
+
+@app.cli.command("load-materials")
+def load_materials_command():
+    """
+    1) Borra registros antiguos de MaterialData.
+    2) Carga materials.csv.
+    3) Muestra conteo.
+    """
+    print("[INFO] Starting material data load...")
+    db.session.query(MaterialData).delete()
+    db.session.commit()
+    print("[INFO] Old data cleared from MaterialData.")
+
+    material_records = load_material_data("materials.csv")
+    if material_records:
+        db.session.bulk_save_objects(material_records)
+        db.session.commit()
+        print(f"[SUCCESS] Inserted {len(material_records)} rows into MaterialData.")
+    else:
+        print("[WARNING] No MaterialData rows inserted.")
+
+    mat_count = MaterialData.query.count()
+    print(f"[INFO] Final MaterialData count: {mat_count}")
+    print("[INFO] load-materials command finished.")
+
+
+
+@app.route('/comparison')
+def comparison():
+    """
+    Página de comparación entre datos reales y pronóstico.
+    """
+    # Lista de productos únicos desde merged_data.csv
+    product_list = ["All"] + merged_df["PRODUCT"].unique().tolist()
+    return render_template("comparison.html", forecast_products=product_list)
+
+@app.route('/comparison_data', methods=['GET'])
+def comparison_data():
+    """
+    Retorna JSON con campos: date, actual, forecast.
+    """
+    product_filter = request.args.get('product', 'All', type=str)
+    start_date_str = request.args.get('start_date', '2024-01-01')
+    end_date_str = request.args.get('end_date', '2025-12-31')
+
+    # Manejar fechas
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+    except ValueError:
+        start_date = datetime(2024, 1, 1)
+
+    try:
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+    except ValueError:
+        end_date = datetime(2025, 12, 31)
+
+    # Filtrar el DataFrame
+    filtered_df = merged_df[(merged_df['ds'] >= start_date) & (merged_df['ds'] <= end_date)]
+
+    if product_filter != 'All':
+        filtered_df = filtered_df[filtered_df['PRODUCT'] == product_filter]
+
+    # Agrupar por fecha y sumar ventas y pronósticos
+    grouped_df = filtered_df.groupby('ds').agg({
+        'VENTAS_REALES': 'sum',
+        'yhat': 'sum'
+    }).reset_index()
+
+    # Construir la respuesta JSON
+    combined_data = []
+    for _, row in grouped_df.iterrows():
+        combined_data.append({
+            "date": row['ds'].strftime('%Y-%m-%d'),
+            "actual": row['VENTAS_REALES'],
+            "forecast": row['yhat']
+        })
+
+    return jsonify(combined_data)
+
+# ------------------------------------------------------------------------------------
+# MAIN
+# ------------------------------------------------------------------------------------
 if __name__ == '__main__':
+    print("[INFO] Running app in debug mode on http://127.0.0.1:5000")
     app.run(debug=True)

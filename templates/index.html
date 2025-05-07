@@ -1,251 +1,1330 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-    <meta charset="UTF-8">
-    <title>Datos de Ventas de Animales</title> 
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+  <!--
+    =======================================================================================
+    Title:
+      Mega Data Mining Dashboard (Enhanced, Non-Sticky Stats)
+
+    Description:
+      A single-page HTML that:
+        - Loads data from /data/<desc>?limit=...
+        - Offers multiple charts (line, bar, pie, radar)
+        - Provides advanced filtering (producto, categoría, rango de fechas)
+        - Includes a table with column toggles, sorting
+        - Has a custom graph wizard
+        - Uses localStorage to persist user preferences
+        - Features a help overlay, a settings modal, an activity timeline, etc.
+        - Removes "sticky" stats to avoid overlapping
+        - Ensures side drawer is properly over other content (z-50)
+    =======================================================================================
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mega Data Mining Dashboard (Enhanced, Non-Sticky Stats)</title>
+
+  <!-- Google Fonts -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap"
+    rel="stylesheet"
+  />
+  <!-- Tailwind CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+    rel="stylesheet"
+  />
+  <!-- Font Awesome for icons -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    integrity="sha512-Fo3rlrZj/k7ujTTXRMvPce2WgjK9K6xx0RnAKEXyxxB5E3F3eXlt1/dnWDbn5Y+xj7FR2YjQHxJXv39fT2Kfeg=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+
+  <style>
+    /* GLOBAL FONT & DARK MODE */
+    body {
+      font-family: 'Roboto', sans-serif;
+    }
+    .dark-mode {
+      background-color: #1a202c;
+      color: #cbd5e0;
+    }
+    .dark-mode .bg-white {
+      background-color: #2d3748 !important;
+    }
+    .dark-mode .text-gray-700 {
+      color: #a0aec0 !important;
+    }
+    .dark-mode .border-gray-200 {
+      border-color: #4a5568 !important;
+    }
+
+    /* CUSTOM SCROLLBAR */
+    .scrollbar::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    .scrollbar::-webkit-scrollbar-track {
+      background: #f9fafb;
+    }
+    .scrollbar::-webkit-scrollbar-thumb {
+      background-color: #9ca3af;
+      border-radius: 9999px;
+    }
+
+    /* DRAWER TRANSITION */
+    .drawer-transition {
+      transition: transform 0.3s ease-in-out;
+    }
+
+    /* FADE-IN ANIMATION */
+    .fade-in {
+      animation: fadeIn 0.7s ease forwards;
+      opacity: 0;
+    }
+    @keyframes fadeIn {
+      to {
+        opacity: 1;
+      }
+    }
+
+    /* DECORATIVE LINE */
+    .decorative-line {
+      background: linear-gradient(90deg, #93c5fd 10%, #3b82f6 90%);
+      height: 4px;
+      width: 100%;
+    }
+
+    /* CARD HOVER EFFECT */
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: transform 0.2s ease-in-out;
+    }
+
+    /* TOAST CONTAINER (top-right corner) */
+    #toastContainer {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      width: 300px;
+    }
+
+    /* TABLE SORTING ARROWS */
+    .sortable {
+      cursor: pointer;
+    }
+    .sort-asc::after {
+      content: "▲";
+      margin-left: 6px;
+      font-size: 0.75rem;
+    }
+    .sort-desc::after {
+      content: "▼";
+      margin-left: 6px;
+      font-size: 0.75rem;
+    }
+
+    /* HELP OVERLAY */
+    #helpOverlay {
+      background: rgba(0,0,0,0.7);
+    }
+
+    /* MODAL CHART PREVIEW */
+    #chartPreviewModal {
+      background: rgba(0,0,0,0.5);
+    }
+  </style>
 </head>
 
-<body class="bg-green-50 min-h-screen flex flex-col">
-    <nav class="bg-green-700 p-4 shadow-md">
-        <div class="container mx-auto flex justify-between items-center">
-            <h2 class="text-white font-bold text-xl">Herramienta de Minería de Datos</h2>
-            <ul class="flex space-x-4">
-                <li><a href="./" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Datos Brutos</a></li>
-                <li><a href="./forecasting" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Pronóstico</a></li>
-                <li><a href="./materials" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Materiales</a></li>
-                <li><a id="graphLink" href="#chartsContainer" class="text-green-200 hover:text-white py-2 px-4 rounded-md transition">Gráficos</a></li>
-            </ul>
-        </div>
-    </nav>
-
-    <div class="container mx-auto p-5 pt-10 flex-1">
-        <h1 class="text-4xl font-bold mb-5 text-center text-green-800">Bienvenido al Panel de Datos de Ventas de Animales</h1>
-        <p class="text-center text-gray-700 mb-8">
-            Esta página es la herramienta de minería de datos perfecta, donde tenemos todos los datos en un solo lugar. 
-            Aquí, podemos analizar datos brutos, hacer predicciones y administrar los materiales necesarios 
-            para una toma de decisiones efectiva respaldada por nuestros datos completos.
-        </p>
-
-        <div class="flex flex-col md:flex-row justify-center space-y-4 md:space-y-0 md:space-x-4 mb-5">
-            <div>
-                <label for="animalSelect" class="block text-gray-700 mb-1">Seleccione un Animal:</label>
-                <select id="animalSelect" class="border border-green-300 rounded p-2 w-full">
-                    <option value="All">Todos los Animales</option>
-                    {% for animal in animals %}
-                        <option value="{{ animal }}">{{ animal }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div>
-                <label for="rowSelect" class="block text-gray-700 mb-1">Número de Filas:</label>
-                <select id="rowSelect" class="border border-green-300 rounded p-2 w-full">
-                    <option value="5">Mostrar 5 filas</option>
-                    <option value="10" selected>Mostrar 10 filas</option>
-                    <option value="20">Mostrar 20 filas</option>
-                    <option value="50">Mostrar 50 filas</option>
-                    <option value="100">Mostrar 100 filas</option>
-                    <option value="500">Mostrar 500 filas</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="overflow-x-auto">
-            <table class="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
-                <thead class="bg-green-600 text-white">
-                    <tr>
-                        <th class="border px-4 py-2">Fecha</th>
-                        <th class="border px-4 py-2">Unidades Vendidas</th>
-                        <th class="border px-4 py-2">Ingresos</th>
-                    </tr>
-                </thead>
-                <tbody id="dataBody" class="bg-gray-50">
-                    </tbody>
-            </table>
-        </div>
-
-        <div id="chartsContainer" class="mt-10">
-            <h2 class="text-2xl font-bold mb-5 text-center text-green-800">Gráficos de Datos de Ventas</h2>
-            <div class="flex flex-col md:flex-row space-y-5 md:space-y-0 md:space-x-5">
-                <div class="w-full md:w-1/2">
-                    <canvas id="revenueChart" class="bg-white p-4 rounded shadow"></canvas>
-                </div>
-                <div class="w-full md:w-1/2">
-                    <canvas id="unitsSoldChart" class="bg-white p-4 rounded shadow"></canvas>
-                </div>
-            </div>
-        </div>
+<body class="bg-gray-50 min-h-screen flex flex-col relative">
+  <!-- NAVBAR -->
+  <nav class="sticky top-0 bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-700 shadow-md z-50">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center text-white">
+      <!-- LEFT: BRAND & DARK MODE -->
+      <div class="flex items-center space-x-3">
+        <a href="#" class="text-2xl font-extrabold tracking-wide flex items-center">
+          <i class="fas fa-database mr-2"></i> DataMiner Pro
+        </a>
+        <button
+          id="darkModeToggle"
+          class="focus:outline-none hover:text-gray-300"
+          title="Toggle Dark Mode"
+        >
+          <i class="fas fa-moon"></i>
+        </button>
+      </div>
+      <!-- RIGHT: NAV & ICONS -->
+      <div class="hidden md:flex items-center space-x-6">
+        <a href="/" class="hover:text-gray-200 transition"
+          ><i class="fas fa-home mr-1"></i> Inicio</a
+        >
+        <a href="/forecasting" class="hover:text-gray-200 transition"
+          ><i class="fas fa-chart-line mr-1"></i> Pronóstico</a
+        >
+        <a href="/materials" class="hover:text-gray-200 transition"
+          ><i class="fas fa-boxes mr-1"></i> Materiales</a
+        >
+        <button
+          id="helpBtn"
+          class="hover:text-gray-200 transition focus:outline-none"
+          title="Ayuda / Tour"
+        >
+          <i class="fas fa-question-circle"></i>
+        </button>
+        <button
+          id="settingsBtn"
+          class="hover:text-gray-200 transition focus:outline-none"
+          title="Configuración"
+        >
+          <i class="fas fa-cog"></i>
+        </button>
+        <button
+          id="notifyBtn"
+          class="hover:text-gray-200 transition focus:outline-none"
+          title="Notificaciones"
+        >
+          <i class="fas fa-bell"></i>
+        </button>
+      </div>
+      <!-- MOBILE MENU -->
+      <div class="md:hidden">
+        <button id="mobileMenuBtn" class="focus:outline-none">
+          <i class="fas fa-bars fa-lg"></i>
+        </button>
+      </div>
     </div>
+    <!-- MOBILE MENU (Slide-Out) -->
+    <div id="mobileMenu" class="fixed inset-0 bg-black bg-opacity-50 hidden z-40">
+      <div class="absolute top-0 right-0 w-64 bg-white h-full shadow-md p-4">
+        <button id="closeMobileMenu" class="text-gray-700 mb-4 focus:outline-none">
+          <i class="fas fa-times"></i> Cerrar
+        </button>
+        <nav class="flex flex-col space-y-4">
+          <a href="/" class="hover:text-indigo-700 transition"
+            ><i class="fas fa-home mr-2"></i> Inicio</a
+          >
+          <a href="/forecasting" class="hover:text-indigo-700 transition"
+            ><i class="fas fa-chart-line mr-2"></i> Pronóstico</a
+          >
+          <a href="/materials" class="hover:text-indigo-700 transition"
+            ><i class="fas fa-boxes mr-2"></i> Materiales</a
+          >
+          <a href="#" class="hover:text-indigo-700 transition"
+            ><i class="fas fa-cog mr-2"></i> Configuración</a
+          >
+          <a href="#" class="hover:text-indigo-700 transition"
+            ><i class="fas fa-bell mr-2"></i> Notificaciones</a
+          >
+        </nav>
+      </div>
+    </div>
+  </nav>
 
-    <footer class="bg-green-700 py-4">
-        <div class="container mx-auto text-center text-white">
-            &copy; 2024 Pronóstico de Ventas de Animales. Todos los Derechos Reservados.
+  <!-- HERO SECTION -->
+  <header
+    class="relative bg-cover bg-center h-96 flex items-center justify-center"
+    style="background-image: url('{{ url_for('static', filename='Big-Data-e-Analytics.jpg') }}');"
+  >
+    <div class="absolute inset-0 bg-black opacity-60"></div>
+    <div class="relative z-10 text-center text-white px-4">
+      <h1 class="text-5xl md:text-6xl font-extrabold mb-4">
+        Panel Avanzado de Data Mining
+      </h1>
+      <p class="text-xl md:text-2xl mb-6">
+        Explora, analiza y visualiza tus datos con herramientas interactivas de
+        última generación.
+      </p>
+      <a
+        href="#filters"
+        class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded transition shadow-lg"
+      >
+        ¡Comienza Ahora!
+      </a>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="container mx-auto px-4 flex-grow py-8">
+    <!-- FILTERS & CONTROLS SECTION -->
+    <section id="filters" class="mb-8 bg-white rounded-lg shadow p-6 fade-in">
+      <h2 class="text-2xl font-bold text-gray-700 mb-4">Filtros &amp; Controles</h2>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <!-- Producto Selector -->
+        <div>
+          <label
+            for="descripcionSelect"
+            class="block text-gray-600 font-semibold mb-1"
+            title="Elige el producto"
+          >
+            Producto
+          </label>
+          <select
+            id="descripcionSelect"
+            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          >
+            <option value="All">Todos</option>
+            <!-- Más opciones de producto desde el backend -->
+          </select>
         </div>
-    </footer>
-    <!-- JavaScript for Data Fetching and Chart Handling -->
-    <script>
-        $(document).ready(function() {
-            let revenueChartInstance = null;
-            let unitsSoldChartInstance = null;
-
-            // Function to fetch and display data
-            function fetchData() {
-                const selectedAnimal = $('#animalSelect').val() || "All";
-                const rowsToShow = parseInt($('#rowSelect').val());
-
-                let requestUrl = '';
-                if (selectedAnimal === "All" || selectedAnimal === "") {
-                    requestUrl = `/data/All?limit=${rowsToShow}`;
-                } else {
-                    requestUrl = `/data/${selectedAnimal}?limit=${rowsToShow}`;
-                }
-
-                $.getJSON(requestUrl, function(data) {
-                    // Update Table
-                    let rows = '';
-                    data.forEach(item => {
-                        rows += `
-                            <tr class="hover:bg-gray-100 transition">
-                                <td class="border px-4 py-2">${item.date}</td>
-                                <td class="border px-4 py-2">${item.units_sold}</td>
-                                <td class="border px-4 py-2">${item.revenue}</td>
-                            </tr>`;
-                    });
-                    $('#dataBody').html(rows);
-
-                    // Update Charts
-                    updateCharts(data);
-                }).fail(function(jqXHR, textStatus, errorThrown) {
-                    console.error('AJAX Error:', textStatus, errorThrown);
-                    alert('Failed to fetch data. Please try again.');
-                });
-            }
-
-            // Function to update charts
-            function updateCharts(data) {
-                const labels = data.map(item => item.date);
-                const revenueData = data.map(item => item.revenue);
-                const unitsSoldData = data.map(item => item.units_sold);
-
-                // Destroy existing charts if they exist
-                if (revenueChartInstance) revenueChartInstance.destroy();
-                if (unitsSoldChartInstance) unitsSoldChartInstance.destroy();
-
-                const revenueCtx = document.getElementById('revenueChart').getContext('2d');
-                revenueChartInstance = new Chart(revenueCtx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Revenue',
-                            data: revenueData,
-                            backgroundColor: 'rgba(34, 197, 94, 0.2)', // Green
-                            borderColor: 'rgba(34, 197, 94, 1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.3
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: 'Revenue Over Time',
-                                font: {
-                                    size: 18
-                                }
-                            },
-                            legend: {
-                                display: true,
-                                position: 'top'
-                            }
-                        },
-                        scales: {
-                            x: {
-                                title: {
-                                    display: true,
-                                    text: 'Date'
-                                }
-                            },
-                            y: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Revenue'
-                                }
-                            }
-                        }
-                    }
-                });
-
-                const unitsSoldCtx = document.getElementById('unitsSoldChart').getContext('2d');
-                unitsSoldChartInstance = new Chart(unitsSoldCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Units Sold',
-                            data: unitsSoldData,
-                            backgroundColor: 'rgba(59, 130, 246, 0.6)', // Blue
-                            borderColor: 'rgba(59, 130, 246, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: 'Units Sold Over Time',
-                                font: {
-                                    size: 18
-                                }
-                            },
-                            legend: {
-                                display: true,
-                                position: 'top'
-                            }
-                        },
-                        scales: {
-                            x: {
-                                title: {
-                                    display: true,
-                                    text: 'Date'
-                                }
-                            },
-                            y: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Units Sold'
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-
-            // Event Listeners
-            $('#animalSelect').change(fetchData);
-            $('#rowSelect').change(fetchData);
-
-            // Scroll to charts when "Graphs" link is clicked
-            $('#graphLink').click(function(event) {
-                event.preventDefault();
-                $('html, body').animate({
-                    scrollTop: $('#chartsContainer').offset().top
-                }, 500);
+        <!-- Categoría Selector -->
+        <div>
+          <label
+            for="categoriaSelect"
+            class="block text-gray-600 font-semibold mb-1"
+            title="Elige la categoría"
+          >
+            Categoría
+          </label>
+          <select
+            id="categoriaSelect"
+            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          >
+            <option value="All">Todas</option>
+            <option value="Orgánica">Orgánica</option>
+            <option value="Química">Química</option>
+            <option value="Sintética">Sintética</option>
+            <option value="Natural">Natural</option>
+          </select>
+        </div>
+        <!-- Filas a Mostrar -->
+        <div>
+          <label
+            for="rowSelect"
+            class="block text-gray-600 font-semibold mb-1"
+            title="Número de filas a mostrar"
+          >
+            Filas a Mostrar
+          </label>
+          <select
+            id="rowSelect"
+            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          >
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="500">500</option>
+            <!-- Opción NUEVA "ALL" -->
+            <option value="ALL">Todos</option>
+          </select>
+        </div>
+        <!-- Rango de Fechas -->
+        <div class="flex flex-col space-y-2">
+          <label class="text-gray-600 font-semibold" title="Define rango de fechas"
+            >Rango de Fechas</label
+          >
+          <div class="flex space-x-2">
+            <input
+              id="dateRangeStart"
+              type="date"
+              class="border border-gray-300 rounded px-3 py-2 w-1/2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+            <input
+              id="dateRangeEnd"
+              type="date"
+              class="border border-gray-300 rounded px-3 py-2 w-1/2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
+        </div>
+      </div>
+      <!-- Año Específico -->
+      <div>
+        <label
+          for="yearSelect"
+          class="block text-gray-600 font-semibold mb-1"
+          title="Selecciona un año específico"
+        >
+          Año Específico
+        </label>
+        <select
+          id="yearSelect"
+          class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        >
+          <option value="All" selected>Todos los años</option>
+          <!-- Generar años dinámicamente -->
+          <script>
+            $(document).ready(function () {
+              const yearSelect = $("#yearSelect");
+              for (let year = 2003; year <= 2026; year++) {
+                yearSelect.append(`<option value="${year}">${year}</option>`);
+              }
             });
+          </script>
+        </select>
+      </div>
 
-            // Initial Data Fetch
-            fetchData();
+      <!-- Botones Filtros -->
+      <div class="mt-6 flex flex-wrap gap-4">
+        <button
+          id="fetchBtn"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow transition"
+        >
+          <i class="fas fa-sync-alt mr-1"></i> Refrescar Datos
+        </button>
+        <button
+          id="openTableBtn"
+          class="bg-pink-600 hover:bg-pink-700 text-white font-semibold py-2 px-4 rounded shadow transition"
+        >
+          <i class="fas fa-table mr-1"></i> Ver Tabla
+        </button>
+        <button
+          id="resetFiltersBtn"
+          class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded shadow transition"
+        >
+          <i class="fas fa-undo mr-1"></i> Reset Filtros
+        </button>
+      </div>
+    </section>
+
+    <!-- STATS CARDS (No sticky) -->
+    <section id="statCards" class="mb-8 fade-in">
+      <h2 class="text-2xl font-bold text-gray-700 mb-4">Resumen de Datos</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Tarjeta: Total Filas -->
+        <div
+          class="bg-white card border border-gray-200 rounded-lg shadow p-6 text-center"
+        >
+          <i class="fas fa-list-alt text-indigo-600 text-4xl mb-2"></i>
+          <h3 class="text-xl font-semibold text-gray-700 mb-2">Total de Filas</h3>
+          <p id="statTotalRows" class="text-3xl font-bold text-indigo-600">0</p>
+        </div>
+        <!-- Tarjeta: Suma Cantidades -->
+        <div
+          class="bg-white card border border-gray-200 rounded-lg shadow p-6 text-center"
+        >
+          <i class="fas fa-sort-amount-up text-indigo-600 text-4xl mb-2"></i>
+          <h3 class="text-xl font-semibold text-gray-700 mb-2">Suma Cantidades</h3>
+          <p id="statSumQuantity" class="text-3xl font-bold text-indigo-600">0</p>
+        </div>
+        <!-- Tarjeta: Precio Promedio -->
+        <div
+          class="bg-white card border border-gray-200 rounded-lg shadow p-6 text-center"
+        >
+          <i class="fas fa-dollar-sign text-indigo-600 text-4xl mb-2"></i>
+          <h3 class="text-xl font-semibold text-gray-700 mb-2">Precio Promedio</h3>
+          <p id="statAvgPrice" class="text-3xl font-bold text-indigo-600">0</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHARTS SECTION -->
+    <section id="chartsSection" class="mb-8 fade-in">
+      <h2 class="text-2xl font-bold text-gray-700 mb-4">Visualización Gráfica</h2>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Chart 1: Cantidad (Line) -->
+        <div
+          class="bg-white card border border-gray-200 rounded-lg shadow p-4 relative"
+        >
+          <h3 class="text-lg font-bold text-gray-700 mb-2">
+            Evolución de la Cantidad
+          </h3>
+          <canvas id="quantityChart" height="150"></canvas>
+          <button
+            class="absolute top-2 right-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-1 px-2 rounded text-sm"
+            onclick="openChartPreview('quantity')"
+          >
+            Preview
+          </button>
+        </div>
+        <!-- Chart 2: Precio (Bar) -->
+        <div
+          class="bg-white card border border-gray-200 rounded-lg shadow p-4 relative"
+        >
+          <h3 class="text-lg font-bold text-gray-700 mb-2">
+            Evolución del Precio Unitario
+          </h3>
+          <canvas id="priceChart" height="150"></canvas>
+          <button
+            class="absolute top-2 right-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-1 px-2 rounded text-sm"
+            onclick="openChartPreview('price')"
+          >
+            Preview
+          </button>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Chart 3: Distribución (Pie) -->
+        <div
+          class="bg-white card border border-gray-200 rounded-lg shadow p-4 relative"
+        >
+          <h3 class="text-lg font-bold text-gray-700 mb-2">
+            Distribución de Productos
+          </h3>
+          <canvas id="pieChart" height="150"></canvas>
+          <button
+            class="absolute top-2 right-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-1 px-2 rounded text-sm"
+            onclick="openChartPreview('pie')"
+          >
+            Preview
+          </button>
+        </div>
+        <!-- Chart 4: Radar Chart -->
+        <div
+          class="bg-white card border border-gray-200 rounded-lg shadow p-4"
+        >
+          <h3 class="text-lg font-bold text-gray-700 mb-2">
+            Radar: Producto vs Cantidad
+          </h3>
+          <canvas id="radarChart" height="150"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ACTIVITY TIMELINE -->
+    <section
+      id="activityTimeline"
+      class="mb-8 bg-white rounded-lg shadow p-6 fade-in"
+    >
+      <h2 class="text-2xl font-bold text-gray-700 mb-4">Actividad Reciente</h2>
+      <ul class="relative border-l border-gray-300 ml-4 overflow-hidden">
+        <li class="mb-6 ml-4 timeline-item transform -translate-y-8 opacity-0">
+          <div
+            class="absolute w-3 h-3 bg-indigo-600 rounded-full mt-1.5 -left-1.5 border border-white"
+          ></div>
+          <p class="text-sm text-gray-500">01 Abr 2025</p>
+          <h3 class="text-lg font-semibold text-gray-700">Datos Importados</h3>
+          <p class="text-gray-600">
+            Se importaron 120 registros desde VENTAS_TROCIUK3.csv.
+          </p>
+        </li>
+        <li class="mb-6 ml-4 timeline-item transform -translate-y-8 opacity-0">
+          <div
+            class="absolute w-3 h-3 bg-indigo-600 rounded-full mt-1.5 -left-1.5 border border-white"
+          ></div>
+          <p class="text-sm text-gray-500">03 Abr 2025</p>
+          <h3 class="text-lg font-semibold text-gray-700">Pronóstico Actualizado</h3>
+          <p class="text-gray-600">
+            Se actualizaron los datos de merged_data.csv para pronósticos futuros.
+          </p>
+        </li>
+        <li class="mb-6 ml-4 timeline-item transform -translate-y-8 opacity-0">
+          <div
+            class="absolute w-3 h-3 bg-indigo-600 rounded-full mt-1.5 -left-1.5 border border-white"
+          ></div>
+          <p class="text-sm text-gray-500">05 Abr 2025</p>
+          <h3 class="text-lg font-semibold text-gray-700">
+            Gráfico Personalizado Generado
+          </h3>
+          <p class="text-gray-600">
+            El usuario generó un gráfico personalizado basado en datos
+            seleccionados.
+          </p>
+        </li>
+      </ul>
+    </section>
+
+    <!-- CUSTOM GRAPH WIZARD -->
+    <section
+      id="customGraphWizard"
+      class="mb-8 bg-white rounded-lg shadow p-6 fade-in"
+    >
+      <h2 class="text-2xl font-bold text-gray-700 mb-4">
+        Crea Tu Propio Gráfico
+      </h2>
+      <p class="text-gray-600 mb-4 text-sm">
+        Selecciona las variables para el eje X y Y, elige el tipo de gráfico y
+        genera una visualización personalizada.
+      </p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div>
+          <label for="wizardXAxis" class="block text-gray-600 font-semibold mb-1"
+            >Eje X</label
+          >
+          <select
+            id="wizardXAxis"
+            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          >
+            <option value="fecha">Fecha</option>
+            <option value="cod_articulo">Cod Artículo</option>
+            <option value="descripcion">Descripción</option>
+          </select>
+        </div>
+        <div>
+          <label for="wizardYAxis" class="block text-gray-600 font-semibold mb-1"
+            >Eje Y</label
+          >
+          <select
+            id="wizardYAxis"
+            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          >
+            <option value="total_cantidad">Cantidad</option>
+            <option value="precio_unitario">Precio Unitario</option>
+          </select>
+        </div>
+        <div>
+          <label
+            for="wizardChartType"
+            class="block text-gray-600 font-semibold mb-1"
+            >Tipo de Gráfico</label
+          >
+          <select
+            id="wizardChartType"
+            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          >
+            <option value="line">Line</option>
+            <option value="bar">Bar</option>
+            <option value="pie">Pie</option>
+          </select>
+        </div>
+      </div>
+      <button
+        id="buildGraphBtn"
+        class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded shadow transition"
+      >
+        <i class="fas fa-chart-area mr-1"></i> Generar Gráfico Personalizado
+      </button>
+      <div id="customGraphContainer" class="mt-6 hidden">
+        <h3 class="text-lg font-bold text-gray-700 mb-2">
+          Mi Gráfico Personalizado
+        </h3>
+        <canvas id="customChartCanvas" height="120"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <!-- SIDE DRAWER (TABLE) -->
+  <div
+    id="tableDrawer"
+    class="fixed top-0 right-0 w-full md:w-2/5 h-full bg-white shadow-2xl transform translate-x-full drawer-transition z-50"
+  >
+    <div
+      class="bg-gradient-to-r from-purple-600 to-pink-600 text-white flex justify-between items-center px-4 py-4"
+    >
+      <h2 class="text-xl font-bold">Tabla de Registros</h2>
+      <div class="relative group">
+        <button
+          class="focus:outline-none hover:bg-pink-700 rounded px-3 py-1 transition text-sm"
+        >
+          <i class="fas fa-columns"></i> Columnas
+        </button>
+        <div
+          class="absolute right-0 mt-2 bg-white text-gray-700 rounded shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transform group-hover:translate-y-1 transition-all"
+        >
+          <div class="py-2 w-48 flex flex-col space-y-1 px-4">
+            <label
+              ><input type="checkbox" class="colToggle" data-col="0" checked />
+              Fecha</label
+            >
+            <label
+              ><input type="checkbox" class="colToggle" data-col="1" checked />
+              Cod Artículo</label
+            >
+            <label
+              ><input type="checkbox" class="colToggle" data-col="2" checked />
+              Descripción</label
+            >
+            <label
+              ><input type="checkbox" class="colToggle" data-col="3" checked />
+              Cantidad</label
+            >
+            <label
+              ><input type="checkbox" class="colToggle" data-col="4" checked />
+              Precio Unitario</label
+            >
+          </div>
+        </div>
+      </div>
+      <button
+        id="closeTableBtn"
+        class="text-white hover:bg-pink-700 rounded px-3 py-1 transition"
+      >
+        <i class="fas fa-times"></i> Cerrar
+      </button>
+    </div>
+    <div class="p-4 h-full overflow-y-auto scrollbar">
+      <table class="min-w-full text-gray-700" id="dataTable">
+        <thead class="bg-pink-50 sticky top-0">
+          <tr>
+            <th
+              class="px-4 py-2 font-semibold border-b border-gray-200 text-left sortable"
+              data-field="fecha"
+            >
+              Fecha
+            </th>
+            <th
+              class="px-4 py-2 font-semibold border-b border-gray-200 text-left sortable"
+              data-field="cod_articulo"
+            >
+              Cod Artículo
+            </th>
+            <th
+              class="px-4 py-2 font-semibold border-b border-gray-200 text-left sortable"
+              data-field="descripcion"
+            >
+              Descripción
+            </th>
+            <th
+              class="px-4 py-2 font-semibold border-b border-gray-200 text-left sortable"
+              data-field="total_cantidad"
+            >
+              Cantidad
+            </th>
+            <th
+              class="px-4 py-2 font-semibold border-b border-gray-200 text-left sortable"
+              data-field="precio_unitario"
+            >
+              Precio Unitario
+            </th>
+          </tr>
+        </thead>
+        <tbody id="dataBody" class="divide-y divide-gray-100">
+          <!-- Data rows go here -->
+        </tbody>
+      </table>
+      <div class="mt-4 text-right">
+        <a
+          href="#"
+          class="text-indigo-600 hover:underline"
+          onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+        >
+          Volver al inicio <i class="fas fa-arrow-up"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHART PREVIEW MODAL -->
+  <div id="chartPreviewModal" class="fixed inset-0 hidden z-50 items-center justify-center">
+    <div class="absolute inset-0 bg-black bg-opacity-50" onclick="closeChartPreview()"></div>
+    <div class="bg-white rounded-lg shadow-lg w-11/12 md:w-2/3 xl:w-1/2 p-4 relative">
+      <button
+        class="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
+        onclick="closeChartPreview()"
+      >
+        <i class="fas fa-times fa-lg"></i>
+      </button>
+      <canvas id="chartPreviewCanvas" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div
+    id="settingsModal"
+    class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center"
+  >
+    <div class="bg-white rounded-lg shadow-lg w-11/12 md:w-1/3 p-6 relative">
+      <button
+        id="closeSettingsModal"
+        class="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
+      >
+        <i class="fas fa-times fa-lg"></i>
+      </button>
+      <h2 class="text-2xl font-bold text-gray-700 mb-4">
+        Configuración del Dashboard
+      </h2>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-gray-600 font-semibold mb-1"
+            >Modo de Tema</label
+          >
+          <div>
+            <button id="themeLight" class="bg-gray-200 text-gray-700 py-2 px-4 rounded mr-2">
+              Claro
+            </button>
+            <button id="themeDark" class="bg-gray-800 text-white py-2 px-4 rounded">
+              Oscuro
+            </button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-gray-600 font-semibold mb-1"
+            >Notificaciones</label
+          >
+          <p class="text-gray-500 text-sm">
+            Activa o desactiva notificaciones emergentes.
+          </p>
+          <div>
+            <button id="notifyOn" class="bg-green-500 text-white py-2 px-4 rounded mr-2">
+              Activar
+            </button>
+            <button id="notifyOff" class="bg-red-500 text-white py-2 px-4 rounded">
+              Desactivar
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="mt-6 text-right">
+        <button
+          id="saveSettings"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
+        >
+          Guardar Cambios
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HELP OVERLAY -->
+  <div
+    id="helpOverlay"
+    class="fixed inset-0 hidden z-50 flex items-center justify-center text-white p-4"
+  >
+    <div class="absolute inset-0 bg-black opacity-80"></div>
+    <div class="relative bg-blue-800 p-6 rounded shadow-lg max-w-3xl w-full">
+      <button
+        id="closeHelpOverlay"
+        class="absolute top-2 right-2 text-white hover:text-gray-300 focus:outline-none"
+      >
+        <i class="fas fa-times fa-lg"></i>
+      </button>
+      <h2 class="text-2xl font-bold mb-4">Ayuda / Tour Rápido</h2>
+      <p class="mb-4">
+        Bienvenido(a) a tu panel de control avanzado. Estas son las funciones
+        principales:
+      </p>
+      <ul class="list-disc list-inside space-y-2">
+        <li>
+          <strong>Filtros &amp; Controles:</strong> Selecciona producto,
+          categoría, rango de fechas y filas.
+        </li>
+        <li>
+          <strong>Estadísticas:</strong> Visualiza recuentos y promedios de la
+          data actual (no es sticky para evitar superposición).
+        </li>
+        <li>
+          <strong>Gráficas:</strong> Observa la evolución de la cantidad,
+          precio y distribución. Haz click en “Preview” para verlas ampliadas.
+        </li>
+        <li>
+          <strong>Tabla:</strong> Abre la tabla de registros y ajusta columnas
+          o aplica sort con un click en el encabezado.
+        </li>
+        <li>
+          <strong>Modo Oscuro y Notificaciones:</strong> Ajusta el tema y
+          alertas en la configuración.
+        </li>
+        <li>
+          <strong>Reporte Personalizado:</strong> Genera tu propia gráfica con
+          el asistente avanzado.
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toastContainer"></div>
+
+  <!-- FOOTER -->
+  <footer
+    class="bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-700 text-white py-6 mt-8"
+  >
+    <div class="container mx-auto text-center">
+      <p class="mb-2">
+        &copy; 2025 DataMiner Pro. Todos los derechos reservados.
+      </p>
+      <div class="flex justify-center space-x-4 mb-2">
+        <a href="#" class="hover:text-gray-200"
+          ><i class="fab fa-facebook fa-lg"></i
+        ></a>
+        <a href="#" class="hover:text-gray-200"
+          ><i class="fab fa-twitter fa-lg"></i
+        ></a>
+        <a href="#" class="hover:text-gray-200"
+          ><i class="fab fa-linkedin fa-lg"></i
+        ></a>
+      </div>
+      <p class="text-xs">
+        Creado con amor, dedicación y pasión por el análisis de datos.
+      </p>
+    </div>
+  </footer>
+
+  <!-- FULL JS -->
+  <script>
+    /* ---------------------------------------------------------------------------
+       GLOBALS
+    --------------------------------------------------------------------------- */
+    let quantityChart, priceChart, pieChart, radarChart, customChart;
+    let dataCache = [];
+    let notificationsEnabled = true;
+    let chartPreviewInstance = null;
+    let sortCol = null;
+    let sortDirection = 1; // 1=asc, -1=desc
+
+    /* ---------------------------------------------------------------------------
+       INIT CHARTS
+    --------------------------------------------------------------------------- */
+    function initCharts() {
+      // 1) Cantidad (Line)
+      const quantityCtx = document.getElementById('quantityChart').getContext('2d');
+      quantityChart = new Chart(quantityCtx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Cantidad',
+            data: [],
+            backgroundColor: 'rgba(99, 102, 241, 0.2)',
+            borderColor: 'rgba(99, 102, 241, 1)',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: 'Fecha' } },
+            y: { beginAtZero: true, title: { display: true, text: 'Cantidad' } }
+          }
+        }
+      });
+
+      // 2) Precio (Bar)
+      const priceCtx = document.getElementById('priceChart').getContext('2d');
+      priceChart = new Chart(priceCtx, {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Precio Unitario (Gs)',
+            data: [],
+            backgroundColor: 'rgba(236, 72, 153, 0.6)',
+            borderColor: 'rgba(236, 72, 153, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true
+        }
+      });
+
+      // 3) Pie (Distribución)
+      const pieCtx = document.getElementById('pieChart').getContext('2d');
+      pieChart = new Chart(pieCtx, {
+        type: 'pie',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Distribución',
+            data: [],
+            backgroundColor: [
+              'rgba(59, 130, 246, 0.7)',
+              'rgba(236, 72, 153, 0.7)',
+              'rgba(16, 185, 129, 0.7)',
+              'rgba(245, 158, 11, 0.7)',
+              'rgba(139, 92, 246, 0.7)'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: { responsive: true }
+      });
+
+      // 4) Radar Chart
+      const radarCtx = document.getElementById('radarChart').getContext('2d');
+      radarChart = new Chart(radarCtx, {
+        type: 'radar',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Producto vs Cantidad',
+            data: [],
+            backgroundColor: 'rgba(139, 92, 246, 0.2)',
+            borderColor: 'rgba(139, 92, 246, 1)',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true
+        }
+      });
+    }
+
+    /* ---------------------------------------------------------------------------
+       FETCH DATA (Mejorado con Filtro de Año Específico)
+    --------------------------------------------------------------------------- */
+    function fetchData() {
+      const desc = $("#descripcionSelect").val() || "All";
+      let limit = $("#rowSelect").val() || 10;
+
+      // Si el usuario seleccionó "ALL", usamos un límite alto
+      if (limit === "ALL") {
+        limit = 999999;
+      }
+
+      const startDate = $("#dateRangeStart").val();
+      const endDate = $("#dateRangeEnd").val();
+      const selectedYear = $("#yearSelect").val();
+
+      // Validación de fechas
+      if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+        alert("La fecha de inicio no puede ser mayor que la fecha de fin.");
+        return;
+      }
+
+      // Construir URL con parámetros
+      let url = `/data/${desc}?limit=${limit}`;
+      if (startDate) url += `&start_date=${startDate}`;
+      if (endDate) url += `&end_date=${endDate}`;
+      if (selectedYear && selectedYear !== "All") {
+        url += `&year=${selectedYear}`;
+      }
+
+      console.log("Fetching data from:", url); // Para depuración
+
+      // Llamada AJAX para obtener los datos
+      $.getJSON(url, function (data) {
+        if (data.length === 0) {
+          showToast("No se encontraron datos para los filtros seleccionados", "error");
+        } else {
+          dataCache = data;
+          updateStats(data);
+          updateMainCharts(data);
+          populateTable(data);
+          showToast("Datos cargados correctamente", "success");
+        }
+      }).fail(function (xhr, status, error) {
+        console.error("Error fetching data:", status, error);
+        showToast("Error al cargar los datos", "error");
+      });
+    }
+
+    /* ---------------------------------------------------------------------------
+       UPDATE CHARTS
+    --------------------------------------------------------------------------- */
+    function updateMainCharts(data) {
+      const labels = data.map(item => item.fecha);
+      const quantities = data.map(item => item.total_cantidad);
+
+      quantityChart.data.labels = labels;
+      quantityChart.data.datasets[0].data = quantities;
+      quantityChart.update();
+
+      const prices = data.map(item => item.precio_unitario);
+
+      priceChart.data.labels = labels;
+      priceChart.data.datasets[0].data = prices;
+      priceChart.update();
+
+      const productCount = {};
+      data.forEach(item => {
+        const prod = item.descripcion || 'Desconocido';
+        productCount[prod] = (productCount[prod] || 0) + 1;
+      });
+      const pieLabels = Object.keys(productCount);
+      const pieValues = Object.values(productCount);
+
+      pieChart.data.labels = pieLabels;
+      pieChart.data.datasets[0].data = pieValues;
+      pieChart.update();
+
+      const radarMap = {};
+      data.forEach(item => {
+        const prod = item.descripcion || 'N/A';
+        radarMap[prod] = (radarMap[prod] || 0) + item.total_cantidad;
+      });
+      const radarLabels = Object.keys(radarMap);
+      const radarValues = Object.values(radarMap);
+
+      radarChart.data.labels = radarLabels;
+      radarChart.data.datasets[0].data = radarValues;
+      radarChart.update();
+    }
+
+    /* ---------------------------------------------------------------------------
+       UPDATE STATS
+    --------------------------------------------------------------------------- */
+    function updateStats(data) {
+      const totalRows = data.length;
+      const sumQuantity = data.reduce((acc, cur) => acc + (cur.total_cantidad || 0), 0);
+      const avgPrice = totalRows > 0
+        ? data.reduce((acc, cur) => acc + (cur.precio_unitario || 0), 0) / totalRows
+        : 0;
+
+      $("#statTotalRows").text(totalRows);
+      $("#statSumQuantity").text(sumQuantity);
+      $("#statAvgPrice").text(avgPrice.toFixed(2));
+    }
+
+    /* ---------------------------------------------------------------------------
+       POPULATE TABLE
+    --------------------------------------------------------------------------- */
+    function populateTable(data) {
+      let rowsHtml = '';
+      data.forEach(item => {
+        rowsHtml += `
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-2">${item.fecha}</td>
+            <td class="px-4 py-2">${item.cod_articulo}</td>
+            <td class="px-4 py-2">${item.descripcion}</td>
+            <td class="px-4 py-2">${item.total_cantidad}</td>
+            <td class="px-4 py-2">${item.precio_unitario}</td>
+          </tr>
+        `;
+      });
+      $("#dataBody").html(rowsHtml);
+    }
+
+    /* ---------------------------------------------------------------------------
+       CUSTOM CHART
+    --------------------------------------------------------------------------- */
+    function buildCustomChart(data) {
+      const xChoice = $("#wizardXAxis").val();
+      const yChoice = $("#wizardYAxis").val();
+      const typeChoice = $("#wizardChartType").val();
+
+      const labels = data.map(item => item[xChoice] || '(N/A)');
+      const values = data.map(item => item[yChoice] || 0);
+
+      if (customChart) customChart.destroy();
+
+      $("#customGraphContainer").removeClass("hidden");
+      const ctx = document.getElementById('customChartCanvas').getContext('2d');
+      customChart = new Chart(ctx, {
+        type: typeChoice,
+        data: {
+          labels,
+          datasets: [{
+            label: `(${yChoice}) vs. (${xChoice})`,
+            data: values,
+            backgroundColor: 'rgba(59, 130, 246, 0.5)',
+            borderColor: 'rgba(59, 130, 246, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { display: typeChoice !== 'pie' },
+            y: { display: typeChoice !== 'pie', beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    /* ---------------------------------------------------------------------------
+       SIDE DRAWER
+    --------------------------------------------------------------------------- */
+    function openTableDrawer() {
+      $("#tableDrawer").removeClass("translate-x-full").addClass("translate-x-0");
+    }
+    function closeTableDrawer() {
+      $("#tableDrawer").removeClass("translate-x-0").addClass("translate-x-full");
+    }
+
+    /* ---------------------------------------------------------------------------
+       TOAST NOTIFICATIONS
+    --------------------------------------------------------------------------- */
+    function showToast(message, type) {
+      let bgColor = 'bg-blue-100 text-blue-800 border-blue-300';
+      let icon = '<i class="fas fa-info-circle"></i>';
+      if (type === 'success') {
+        bgColor = 'bg-green-100 text-green-800 border-green-300';
+        icon = '<i class="fas fa-check-circle"></i>';
+      } else if (type === 'error') {
+        bgColor = 'bg-red-100 text-red-800 border-red-300';
+        icon = '<i class="fas fa-exclamation-circle"></i>';
+      }
+      const toast = $(`
+        <div class="${bgColor} border-l-4 p-3 rounded shadow flex items-center space-x-2">
+          <div>${icon}</div>
+          <div>${message}</div>
+        </div>
+      `);
+      $("#toastContainer").append(toast);
+      setTimeout(() => {
+        toast.fadeOut(400, () => toast.remove());
+      }, 3000);
+    }
+
+    /* ---------------------------------------------------------------------------
+       DARK MODE (localStorage)
+    --------------------------------------------------------------------------- */
+    function loadDarkModePreference() {
+      const storedPref = localStorage.getItem('darkModeEnabled');
+      if (storedPref === 'true') {
+        $("body").addClass("dark-mode");
+        $("#darkModeToggle i").removeClass("fa-moon").addClass("fa-sun");
+      }
+    }
+    function initDarkModeToggle() {
+      loadDarkModePreference();
+      $("#darkModeToggle").click(function(){
+        $("body").toggleClass("dark-mode");
+        const isDark = $("body").hasClass("dark-mode");
+        localStorage.setItem('darkModeEnabled', isDark);
+        $(this).find("i").toggleClass("fa-moon fa-sun");
+      });
+    }
+
+    /* ---------------------------------------------------------------------------
+       MOBILE MENU
+    --------------------------------------------------------------------------- */
+    function initMobileMenu() {
+      $("#mobileMenuBtn").click(() => { $("#mobileMenu").removeClass("hidden"); });
+      $("#closeMobileMenu").click(() => { $("#mobileMenu").addClass("hidden"); });
+    }
+
+    /* ---------------------------------------------------------------------------
+       NOTIFICATIONS PREFERENCE (localStorage)
+    --------------------------------------------------------------------------- */
+    function loadNotificationsPreference() {
+      const storedNotify = localStorage.getItem('notificationsEnabled');
+      if (storedNotify === 'false') {
+        notificationsEnabled = false;
+      }
+    }
+    function initNotifications() {
+      loadNotificationsPreference();
+      $("#notifyOn").click(() => {
+        notificationsEnabled = true;
+        localStorage.setItem('notificationsEnabled', 'true');
+        showToast("Notificaciones activadas", "success");
+      });
+      $("#notifyOff").click(() => {
+        notificationsEnabled = false;
+        localStorage.setItem('notificationsEnabled', 'false');
+        showToast("Notificaciones desactivadas", "error");
+      });
+    }
+
+    /* ---------------------------------------------------------------------------
+       TABLE SORTING
+    --------------------------------------------------------------------------- */
+    $(document).ready(function () {
+      $("#dataTable thead").on("click", ".sortable", function () {
+        const field = $(this).data("field");
+        $("#dataTable thead th").removeClass("sort-asc sort-desc");
+
+        if (sortCol === field) {
+          sortDirection = -sortDirection; // flip
+        } else {
+          sortCol = field;
+          sortDirection = 1;
+        }
+        if (sortDirection === 1) $(this).addClass("sort-asc");
+        else $(this).addClass("sort-desc");
+
+        dataCache.sort((a, b) => {
+          if ((a[field] || 0) > (b[field] || 0)) return 1 * sortDirection;
+          if ((a[field] || 0) < (b[field] || 0)) return -1 * sortDirection;
+          return 0;
         });
-    </script>
-</body>
+        populateTable(dataCache);
+      });
 
+      // Column toggles
+      $(".colToggle").change(function () {
+        const colIndex = $(this).data("col");
+        const checked = $(this).is(":checked");
+        $("#dataTable tr").each(function () {
+          $(this).find("td,th").eq(colIndex).toggleClass("hidden", !checked);
+        });
+      });
+    });
+
+    /* ---------------------------------------------------------------------------
+       RESET FILTERS
+    --------------------------------------------------------------------------- */
+    $(document).ready(function () {
+      $("#resetFiltersBtn").click(function () {
+        $("#descripcionSelect").val("All");
+        $("#categoriaSelect").val("All");
+        $("#rowSelect").val("10");
+        $("#dateRangeStart").val("");
+        $("#dateRangeEnd").val("");
+        fetchData();
+      });
+    });
+
+    /* ---------------------------------------------------------------------------
+       ANIMATE TIMELINE
+    --------------------------------------------------------------------------- */
+    function animateTimeline() {
+      $(".timeline-item").each(function (index) {
+        $(this).delay(300 * index).queue(function (next) {
+          $(this).removeClass("transform -translate-y-8 opacity-0");
+          $(this).addClass(
+            "transform translate-y-0 opacity-100 transition-all duration-500"
+          );
+          next();
+        });
+      });
+    }
+
+    /* ---------------------------------------------------------------------------
+       CHART PREVIEW MODAL
+    --------------------------------------------------------------------------- */
+    function openChartPreview(chartType) {
+      $("#chartPreviewModal").removeClass("hidden").addClass("flex");
+      const canvas = document.getElementById("chartPreviewCanvas").getContext("2d");
+      if (chartPreviewInstance) chartPreviewInstance.destroy();
+
+      let baseChart = null;
+      if (chartType === "quantity") baseChart = quantityChart;
+      else if (chartType === "price") baseChart = priceChart;
+      else if (chartType === "pie") baseChart = pieChart;
+
+      if (!baseChart) return;
+
+      chartPreviewInstance = new Chart(canvas, {
+        type: baseChart.config.type,
+        data: JSON.parse(JSON.stringify(baseChart.config.data)),
+        options: baseChart.config.options
+      });
+    }
+    function closeChartPreview() {
+      $("#chartPreviewModal").addClass("hidden").removeClass("flex");
+      if (chartPreviewInstance) {
+        chartPreviewInstance.destroy();
+        chartPreviewInstance = null;
+      }
+    }
+
+    /* ---------------------------------------------------------------------------
+       DOCUMENT READY: MAIN
+    --------------------------------------------------------------------------- */
+    $(document).ready(function () {
+      // Initialize charts
+      initCharts();
+      // Initialize Dark Mode
+      initDarkModeToggle();
+      // Initialize Mobile Menu
+      initMobileMenu();
+      // Initialize Notifications
+      initNotifications();
+
+      // Fetch data initially
+      fetchData();
+
+      // Animate timeline
+      animateTimeline();
+
+      // Main button handlers
+      $("#fetchBtn").click(fetchData);
+      $("#openTableBtn").click(openTableDrawer);
+      $("#closeTableBtn").click(closeTableDrawer);
+
+      // Build custom chart
+      $("#buildGraphBtn").click(function () {
+        const desc = $("#descripcionSelect").val() || "All";
+        let limit = $("#rowSelect").val() || 10;
+        if (limit === "ALL") {
+          limit = 999999; // Sin límite
+        }
+        const url = `/data/${desc}?limit=${limit}`;
+
+        $.getJSON(url, function (data) {
+          buildCustomChart(data);
+        }).fail(function (xhr, status, error) {
+          console.error("Error al generar gráfico personalizado:", status, error);
+          showToast("Error al generar gráfico personalizado", "error");
+        });
+      });
+    });
+  </script>
+</body>
 </html>

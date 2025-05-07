@@ -1,430 +1,468 @@
-<!-- templates/materials.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Materiales Necesarios</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+  <meta charset="UTF-8" />
+  <title>Materias Primas - Data Mining Dashboard (Extended + Data)</title>
+
+  <!-- Tailwind CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+    rel="stylesheet"
+  />
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <!-- Chart.js (For usage and distribution charts) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+
+  <style>
+    .scrollbar::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    .scrollbar::-webkit-scrollbar-track {
+      background: #f9fafb;
+    }
+    .scrollbar::-webkit-scrollbar-thumb {
+      background-color: #9ca3af;
+      border-radius: 9999px;
+    }
+    .drawer-transition {
+      transition: transform 0.3s ease-in-out;
+    }
+    .fade-in {
+      animation: fadeIn 0.7s ease forwards;
+      opacity: 0;
+    }
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+    .decorative-line {
+      background: linear-gradient(90deg, #93c5fd 10%, #3b82f6 90%);
+      height: 3px;
+      width: 100%;
+    }
+  </style>
 </head>
-<body class="bg-gray-100 flex flex-col min-h-screen">
-    <!-- Barra de Navegación -->
-    <header class="bg-white shadow-md">
-        <div class="container mx-auto px-5 py-4 flex justify-between items-center">
-            <h1 class="text-2xl text-green-800 font-bold">Panel de Ventas de Alimentos Animales</h1>
-            <nav class="space-x-4">
-                <a href="./" class="text-green-700 hover:text-green-900 font-semibold py-2 px-4 rounded-md transition">Datos Históricos</a>
-                <a href="./forecasting" class="text-green-700 hover:text-green-900 font-semibold py-2 px-4 rounded-md transition">Pronósticos</a>
-                <a href="./materials" class="text-green-700 hover:text-green-900 font-semibold py-2 px-4 rounded-md transition">Materiales</a>
-            </nav>
+
+<body class="bg-gray-100 min-h-screen flex flex-col relative">
+  <!-- NAVBAR -->
+  <nav class="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 shadow-md z-20">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center text-white">
+      <div class="flex items-center space-x-3">
+        <a href="#" class="text-2xl font-extrabold tracking-wide">
+          MateriaPrima
+        </a>
+      </div>
+      <div class="hidden md:flex items-center space-x-6">
+        <a href="/" class="hover:text-gray-200 transition">Datos Crudos</a>
+        <a href="/forecasting" class="hover:text-gray-200 transition">Pronóstico</a>
+        <a href="/materials" class="hover:text-gray-200 transition">Materiales</a>
+      </div>
+      <div class="md:hidden">
+        <button class="focus:outline-none">Menu</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO / HEADING -->
+  <header class="bg-white shadow-sm fade-in mb-4">
+    <div class="container mx-auto px-4 py-8 text-center">
+      <h1 class="text-3xl md:text-4xl font-extrabold text-blue-800 mb-3">
+        Gestión de Materias Primas
+      </h1>
+      <p class="text-lg text-gray-600 max-w-3xl mx-auto">
+        Explora y analiza tu inventario de materias primas, ahora con datos reales desde la base de datos.
+      </p>
+    </div>
+  </header>
+  <div class="decorative-line mb-8"></div>
+
+  <main class="container mx-auto px-4 flex-grow">
+    <!-- FILTERS & CONTROLS -->
+    <section class="mb-8 bg-white rounded-lg shadow p-4 fade-in">
+      <h2 class="text-2xl font-bold text-blue-700 mb-4">Filtros y Configuraciones</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Category Filter -->
+        <div>
+          <label for="materialCategory" class="block text-gray-700 font-semibold mb-1">
+            Categoría de Material
+          </label>
+          <select
+            id="materialCategory"
+            class="w-full border border-blue-500 rounded px-3 py-2 text-gray-700 
+                   focus:outline-none focus:ring-2 focus:ring-blue-400"
+          >
+            <option value="All">Todas</option>
+            <option value="Orgánica">Orgánica</option>
+            <option value="Química">Química</option>
+            <option value="Sintética">Sintética</option>
+            <option value="Natural">Natural</option>
+          </select>
         </div>
-    </header>
-
-    <!-- Contenido Principal -->
-    <main class="container mx-auto my-10 p-8 bg-white rounded-lg shadow-lg flex-1">
-        <h2 class="text-3xl font-extrabold text-green-800 text-center mb-5">Materiales Necesarios para la Producción de Alimentos en 2024</h2>
-        <p class="text-gray-700 text-center mb-8 max-w-2xl mx-auto">
-            A continuación se presenta una visión completa de la cantidad de materiales en kilogramos requeridos para producir alimentos para animales a lo largo del año.
-            Utilice los filtros para enfocarse en animales o materiales específicos, y seleccione cuántos datos mostrar. Revise la tabla, el resumen y las gráficas para obtener información más profunda.
-        </p>
-
-        <!-- Sección de Filtros -->
-        <div class="flex flex-col md:flex-row justify-center mb-10 space-y-4 md:space-y-0 md:space-x-4">
-            <!-- Filtro por Animal -->
-            <div class="w-full md:w-1/4">
-                <label for="animalFilter" class="block font-semibold text-gray-700 mb-1">Filtrar por Animal:</label>
-                <select id="animalFilter" class="border border-green-500 rounded-md p-2 w-full">
-                    <option value="All">Todos</option>
-                    <option value="Horses">Caballos</option>
-                    <option value="Cow">Vaca</option>
-                    <option value="Pig">Cerdo</option>
-                    <option value="Chicken">Pollo</option>
-                </select>
-            </div>
-
-            <!-- Filtro por Material -->
-            <div class="w-full md:w-1/4">
-                <label for="materialFilter" class="block font-semibold text-gray-700 mb-1">Filtrar por Material:</label>
-                <select id="materialFilter" class="border border-green-500 rounded-md p-2 w-full">
-                    <option value="All">Todos</option>
-                    <option value="Trigo">Trigo</option>
-                    <option value="Suplemento Vitamínico">Suplemento Vitamínico</option>
-                    <option value="Heno">Heno</option>
-                    <option value="Agua">Agua</option>
-                </select>
-            </div>
-
-            <!-- Filtro por Cantidad a Mostrar -->
-            <div class="w-full md:w-1/4">
-                <label for="limitFilter" class="block font-semibold text-gray-700 mb-1">Cantidad a Mostrar:</label>
-                <select id="limitFilter" class="border border-green-500 rounded-md p-2 w-full">
-                    <option value="0">Todos</option>
-                    <option value="10">10</option>
-                    <option value="100">100</option>
-                    <option value="1000">1000</option>
-                    <option value="10000">10000</option>
-                </select>
-            </div>
+        <!-- Minimum Stock Filter -->
+        <div>
+          <label for="minQuantity" class="block text-gray-700 font-semibold mb-1">
+            Stock Mínimo (Kg)
+          </label>
+          <input
+            id="minQuantity"
+            type="number"
+            placeholder="Ej: 50"
+            class="w-full border border-blue-500 rounded px-3 py-2 text-gray-700 
+                   focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
         </div>
-
-        <!-- Tarjeta de Resumen -->
-        <div class="bg-green-50 p-6 rounded-lg shadow-md mb-10" id="summaryCard" style="display:none;">
-            <h3 class="text-xl font-bold text-green-700 mb-2">Resumen de Datos Seleccionados</h3>
-            <p class="text-gray-700" id="summaryText"></p>
+        <!-- Buttons -->
+        <div class="flex items-end space-x-4">
+          <button
+            id="applyFiltersBtn"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-semibold 
+                   px-4 py-2 rounded shadow transition"
+          >
+            Aplicar Filtros
+          </button>
+          <button
+            id="openTableBtn"
+            class="bg-pink-600 hover:bg-pink-700 text-white font-semibold 
+                   px-4 py-2 rounded shadow transition"
+          >
+            Ver Tabla
+          </button>
         </div>
+      </div>
+    </section>
 
-        <!-- Tabla de Materiales Necesarios -->
-        <div class="bg-white p-5 rounded-lg shadow-md mb-10">
-            <h3 class="text-xl font-bold text-green-700 mb-4">Datos Detallados de Materiales</h3>
-            <div class="overflow-x-auto">
-                <table class="min-w-full bg-gray-50 rounded-lg shadow-md">
-                    <thead class="bg-green-600 text-white">
-                        <tr>
-                            <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Mes</th>
-                            <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Nombre del Material</th>
-                            <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Tipo de Alimento Animal</th>
-                            <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Cantidad Necesaria</th>
-                        </tr>
-                    </thead>
-                    <tbody id="dataBody" class="bg-white">
-                        <!-- Filas de datos se insertan dinámicamente -->
-                    </tbody>
-                </table>
-            </div>
-            <div class="mt-4 flex justify-center">
-                <button id="loadMoreButton" class="bg-green-700 text-white font-bold py-2 px-4 rounded-md hover:bg-green-800 transition">
-                    Mostrar más datos
-                </button>
-            </div>
+    <!-- STATS CARDS -->
+    <section id="statsSection" class="mb-8 fade-in">
+      <h2 class="text-2xl font-bold text-blue-700 mb-4">Resumen de Inventario</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white border border-gray-200 rounded-lg shadow p-4 text-center">
+          <h3 class="text-xl font-semibold text-gray-700 mb-2">Total de Materiales</h3>
+          <p id="statTotalMaterials" class="text-3xl font-bold text-blue-600">0</p>
         </div>
-
-        <!-- Tabla de Totales Mensuales -->
-        <div class="bg-white p-5 rounded-lg shadow-md mb-10" id="monthlyTotalsSection" style="display:none;">
-            <h3 class="text-xl font-bold text-green-700 mb-4">Totales Mensuales</h3>
-            <p class="text-gray-700 mb-4">
-                Esta tabla muestra la cantidad total de todos los materiales filtrados, agregados por mes En Kilogramos.
-            </p>
-            <div class="overflow-x-auto">
-                <table class="min-w-full bg-gray-50 rounded-lg shadow-md">
-                    <thead class="bg-green-600 text-white">
-                        <tr>
-                            <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Mes</th>
-                            <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Cantidad Total (Todos los Materiales, en Kilogramos)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="monthlyTotalsBody" class="bg-white">
-                        <!-- Totales mensuales dinámicos -->
-                    </tbody>
-                </table>
-            </div>
+        <div class="bg-white border border-gray-200 rounded-lg shadow p-4 text-center">
+          <h3 class="text-xl font-semibold text-gray-700 mb-2">Stock Total (Kg)</h3>
+          <p id="statTotalStock" class="text-3xl font-bold text-blue-600">0</p>
         </div>
-
-        <!-- Gráficas -->
-        <div id="chartsContainer" class="mt-10">
-            <h2 class="text-2xl font-bold mb-5 text-center text-green-800">Visualización de Requerimientos de Materiales</h2>
-            <p class="text-gray-600 text-center mb-8 max-w-xl mx-auto">
-                El gráfico circular muestra la proporción total de cada material necesario en 2024, mientras que el gráfico de líneas muestra la tendencia mensual por material.
-            </p>
-            <div class="flex flex-col md:flex-row space-y-10 md:space-y-0 md:space-x-10">
-                <div class="w-full md:w-1/2 bg-white p-5 rounded-lg shadow-md">
-                    <h4 class="text-lg font-semibold text-green-700 mb-4">Distribución Total de Materiales</h4>
-                    <canvas id="materialQuantityChart"></canvas>
-                </div>
-                <div class="w-full md:w-1/2 bg-white p-5 rounded-lg shadow-md">
-                    <h4 class="text-lg font-semibold text-green-700 mb-4">Tendencias Mensuales de Materiales</h4>
-                    <canvas id="materialTrendChart"></canvas>
-                </div>
-            </div>
+        <div class="bg-white border border-gray-200 rounded-lg shadow p-4 text-center">
+          <h3 class="text-xl font-semibold text-gray-700 mb-2">Valor Estimado (Gs)</h3>
+          <p id="statTotalCost" class="text-3xl font-bold text-blue-600">0</p>
         </div>
-    </main>
+      </div>
+    </section>
 
-    <!-- Pie de Página -->
-    <footer class="bg-white border-t border-gray-200 py-4">
-        <div class="container mx-auto text-center text-gray-600 text-sm">
-            &copy; 2024 Pronóstico de Ventas de Alimentos Animales. Todos los Derechos Reservados.
+    <!-- CHARTS SECTION -->
+    <section id="chartsSection" class="mb-8 fade-in">
+      <h2 class="text-2xl font-bold text-blue-700 mb-4">Visualización (Gráficos)</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white border border-gray-200 rounded-lg shadow p-4">
+          <h3 class="text-lg font-bold text-gray-700 mb-2">Consumo Proyectado (Mensual)</h3>
+          <canvas id="usageChart" height="150"></canvas>
         </div>
-    </footer>
+        <div class="bg-white border border-gray-200 rounded-lg shadow p-4">
+          <h3 class="text-lg font-bold text-gray-700 mb-2">Distribución por Categoría</h3>
+          <canvas id="categoryChart" height="150"></canvas>
+        </div>
+      </div>
+    </section>
 
-    <!-- JavaScript para obtener datos y manejar gráficos -->
-    <script>
-        $(document).ready(function() {
-            let materialQuantityChartInstance = null;
-            let materialTrendChartInstance = null;
+    <!-- BUILD YOUR OWN REPORT -->
+    <section id="buildReportSection" class="mb-8 bg-white rounded-lg shadow p-4 fade-in">
+      <h2 class="text-2xl font-bold text-blue-700 mb-4">Crear Reporte Personalizado de Materias</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label for="reportMetric" class="block text-gray-700 font-semibold mb-1">
+            Métrica
+          </label>
+          <select
+            id="reportMetric"
+            class="w-full border border-blue-500 rounded px-3 py-2 text-gray-700 
+                   focus:outline-none focus:ring-2 focus:ring-blue-400"
+          >
+            <option value="stock">Stock</option>
+            <option value="cost">Costo</option>
+            <option value="ratio">Stock/Cost Ratio</option>
+          </select>
+        </div>
+        <div>
+          <label for="reportChartType" class="block text-gray-700 font-semibold mb-1">
+            Tipo de Gráfico
+          </label>
+          <select
+            id="reportChartType"
+            class="w-full border border-blue-500 rounded px-3 py-2 text-gray-700 
+                   focus:outline-none focus:ring-2 focus:ring-blue-400"
+          >
+            <option value="bar">Bar</option>
+            <option value="pie">Pie</option>
+            <option value="line">Line</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button
+            id="generateReportBtn"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white 
+                   font-semibold px-4 py-2 rounded shadow transition w-full"
+          >
+            Generar Reporte
+          </button>
+        </div>
+      </div>
+      <div id="customReportOutput" class="mt-6 hidden">
+        <h3 class="text-lg font-bold text-gray-700 mb-2">Reporte Generado</h3>
+        <canvas id="reportChartCanvas" height="100"></canvas>
+      </div>
+    </section>
+  </main>
 
-            // Orden de meses en español
-            const spanishMonths = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  <!-- SIDE DRAWER: Materials Table -->
+  <div
+    id="materialsTableDrawer"
+    class="fixed top-0 right-0 w-full md:w-2/5 h-full bg-white shadow-2xl 
+           transform translate-x-full drawer-transition z-50"
+  >
+    <div class="bg-gradient-to-r from-blue-700 to-blue-900 text-white 
+                flex justify-between items-center px-4 py-4">
+      <h2 class="text-xl font-bold">Tabla de Materias Primas</h2>
+      <button
+        id="closeTableBtn"
+        class="text-white hover:bg-blue-800 rounded px-3 py-1 transition"
+      >
+        Cerrar
+      </button>
+    </div>
+    <div class="p-4 h-full overflow-y-auto scrollbar">
+      <table class="min-w-full bg-blue-50 rounded-lg shadow-md">
+        <thead class="bg-blue-600 text-white">
+          <tr>
+            <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">ID</th>
+            <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Nombre</th>
+            <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Categoría</th>
+            <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Stock (Kg)</th>
+            <th class="px-4 py-3 text-left font-medium uppercase tracking-wider">Costo (Gs)</th>
+          </tr>
+        </thead>
+        <tbody id="materialsTableBody" class="bg-gray-50">
+          <!-- Filled dynamically via AJAX from /materials_data -->
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-            // Parámetros de visualización
-            let currentLimit = 60; // Número inicial de filas
-            const increment = 20;  // Cantidad de filas a aumentar cada vez que se presione "Mostrar más datos"
+  <footer class="bg-blue-600 py-4 mt-4">
+    <div class="container mx-auto text-center text-white text-sm">
+      &copy; 2025 Demo de Materias Primas. Todos los derechos reservados.
+    </div>
+  </footer>
 
-            // Función para obtener y mostrar datos
-            function fetchMaterialsData() {
-                const selectedAnimal = $('#animalFilter').val();
-                const selectedMaterial = $('#materialFilter').val();
-                const selectedLimit = $('#limitFilter').val(); // Obtener la opción seleccionada para el límite
+  <!-- JS: We'll fetch the data from /materials_data instead of a local array. -->
+  <script>
+    let materialsData = [];
+    let customReportChart = null;
+    let usageChart = null;
+    let categoryChart = null;
 
-                $.getJSON(`/materials_summary_data?limit=${selectedLimit}`, function(data) {
-                    // Filtrar datos según los selectores
-                    let filteredData = data;
-                    if (selectedAnimal !== 'All') {
-                        filteredData = filteredData.filter(item => item.animal_food === selectedAnimal);
-                    }
+    // 1) OPEN/CLOSE SIDE DRAWER
+    function openMaterialsDrawer() {
+      $("#materialsTableDrawer").removeClass("translate-x-full").addClass("translate-x-0");
+    }
+    function closeMaterialsDrawer() {
+      $("#materialsTableDrawer").removeClass("translate-x-0").addClass("translate-x-full");
+    }
 
-                    if (selectedMaterial !== 'All') {
-                        filteredData = filteredData.filter(item => item.material_name === selectedMaterial);
-                    }
+    // 2) FETCH MATERIALS DATA FROM BACKEND
+    function fetchMaterialsData() {
+      const cat = $("#materialCategory").val() || "All";
+      const minQ = parseInt($("#minQuantity").val() || "0", 10);
+      const limit = 1000; // or any number you'd like
 
-                    // Ordenar por mes
-                    filteredData.sort((a, b) => {
-                        return spanishMonths.indexOf(a.month) - spanishMonths.indexOf(b.month);
-                    });
+      // Build query
+      const url = `/materials_data?category=${cat}&min_stock=${minQ}&limit=${limit}`;
+      $.getJSON(url, function(data){
+        console.log("[DEBUG] Fetched materials_data:", data);
+        materialsData = data;
+        populateMaterialsTable();
+        updateStats();
+        updateCategoryChart();
+      }).fail(function(xhr, status, error){
+        console.error("Error fetching /materials_data:", status, error);
+        alert("No se pudo obtener los datos de materiales.");
+      });
+    }
 
-                    // Tomar los primeros 'currentLimit' elementos
-                    const limitedData = filteredData.slice(0, currentLimit);
+    // 3) POPULATE MATERIALS TABLE
+    function populateMaterialsTable() {
+      let tableRows = "";
+      materialsData.forEach(mat => {
+        tableRows += `
+          <tr class="hover:bg-gray-100 transition">
+            <td class="px-4 py-2 border">${mat.id}</td>
+            <td class="px-4 py-2 border">${mat.nombre}</td>
+            <td class="px-4 py-2 border">${mat.categoria}</td>
+            <td class="px-4 py-2 border">${mat.stock}</td>
+            <td class="px-4 py-2 border">${mat.cost}</td>
+          </tr>
+        `;
+      });
+      $("#materialsTableBody").html(tableRows);
+    }
 
-                    // Actualizar tarjeta de resumen
-                    updateSummaryCard(limitedData);
+    // 4) UPDATE STATS
+    function updateStats() {
+      const totalMaterials = materialsData.length;
+      let totalStock = 0;
+      let totalCost = 0;
+      materialsData.forEach(mat => {
+        totalStock += (mat.stock || 0);
+        totalCost += (mat.cost || 0);
+      });
+      $("#statTotalMaterials").text(totalMaterials);
+      $("#statTotalStock").text(totalStock);
+      $("#statTotalCost").text(totalCost.toLocaleString());
+    }
 
-                    // Actualizar tabla principal
-                    updateMainTable(limitedData);
+    // 5) INIT CHARTS (usageChart, categoryChart)
+    function initCharts() {
+      // usageChart is just a placeholder line chart for monthly usage (hard-coded).
+      const usageCtx = document.getElementById("usageChart").getContext("2d");
+      usageChart = new Chart(usageCtx, {
+        type: "line",
+        data: {
+          labels: ["Ene", "Feb", "Mar", "Abr", "May", "Jun"],
+          datasets: [{
+            label: "Consumo Mensual (Kg)",
+            data: [200, 350, 300, 400, 320, 500],
+            backgroundColor: "rgba(59, 130, 246, 0.2)",
+            borderColor: "rgba(59, 130, 246, 1)",
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: "Mes" } },
+            y: { beginAtZero: true, title: { display: true, text: "Kg" } }
+          }
+        }
+      });
 
-                    // Actualizar totales mensuales
-                    updateMonthlyTotals(limitedData);
+      // categoryChart
+      const categoryCtx = document.getElementById("categoryChart").getContext("2d");
+      categoryChart = new Chart(categoryCtx, {
+        type: "bar",
+        data: {
+          labels: [],
+          datasets: [{
+            label: "Stock Agrupado (Kg)",
+            data: [],
+            backgroundColor: [
+              "rgba(34, 197, 94, 0.6)", 
+              "rgba(245, 158, 11, 0.6)",
+              "rgba(236, 72, 153, 0.6)",
+              "rgba(59, 130, 246, 0.6)",
+              "rgba(139, 92, 246, 0.6)"
+            ],
+            borderColor: "rgba(17, 24, 39, 1)",
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: "Categoría" } },
+            y: { beginAtZero: true, title: { display: true, text: "Stock (Kg)" } }
+          }
+        }
+      });
+    }
 
-                    // Actualizar gráficas
-                    updateMaterialQuantityChart(limitedData);
-                    updateMaterialTrendChart(limitedData);
+    // 6) UPDATE CATEGORY CHART (distribution by category)
+    function updateCategoryChart() {
+      // Summation of stock by category
+      const categorySums = {};
+      materialsData.forEach(mat => {
+        const cat = mat.categoria;
+        if (!categorySums[cat]) categorySums[cat] = 0;
+        categorySums[cat] += mat.stock || 0;
+      });
+      const labels = Object.keys(categorySums);
+      const values = Object.values(categorySums);
 
-                    // Manejar botón "Mostrar más datos"
-                    if (filteredData.length > currentLimit) {
-                        $('#loadMoreButton').show();
-                    } else {
-                        $('#loadMoreButton').hide();
-                    }
+      categoryChart.data.labels = labels;
+      categoryChart.data.datasets[0].data = values;
+      categoryChart.update();
+    }
 
-                }).fail(function(jqXHR, textStatus, errorThrown) {
-                    console.error('Error AJAX:', textStatus, errorThrown);
-                    alert('No se pudieron obtener los datos de materiales. Intente nuevamente.');
-                });
-            }
+    // 7) APPLY FILTERS
+    function applyFilters() {
+      fetchMaterialsData(); // This re-fetches from /materials_data with new category/min stock
+    }
 
-            function updateSummaryCard(filteredData) {
-                if (filteredData.length === 0) {
-                    $('#summaryCard').hide();
-                    return;
-                }
+    // 8) BUILD YOUR OWN REPORT (customReportChart)
+    function buildCustomReport() {
+      const metric = $("#reportMetric").val() || "stock";
+      const chartType = $("#reportChartType").val() || "bar";
 
-                const totalQuantity = filteredData.reduce((sum, item) => sum + item.total_quantity, 0);
-                $('#summaryText').text(`Mostrando ${filteredData.length} filas seleccionadas, con un total aproximado de ${totalQuantity.toFixed(2)} unidades de material.`);
-                $('#summaryCard').show();
-            }
+      $("#customReportOutput").removeClass("hidden");
+      if (customReportChart) customReportChart.destroy();
 
-            function updateMainTable(limitedData) {
-                let rows = '';
-                limitedData.forEach(item => {
-                    rows += `
-                        <tr class="hover:bg-gray-100 transition">
-                            <td class="px-4 py-2 border text-gray-700">${item.month}</td>
-                            <td class="px-4 py-2 border text-gray-700">${item.material_name}</td>
-                            <td class="px-4 py-2 border text-gray-700">${item.animal_food}</td>
-                            <td class="px-4 py-2 border text-gray-700">${item.total_quantity}</td>
-                        </tr>`;
-                });
-                $('#dataBody').html(rows);
-            }
-
-            function updateMonthlyTotals(filteredData) {
-                // Agregar totales por mes
-                const monthlyTotals = {};
-                filteredData.forEach(item => {
-                    if (!monthlyTotals[item.month]) {
-                        monthlyTotals[item.month] = 0;
-                    }
-                    monthlyTotals[item.month] += item.total_quantity;
-                });
-
-                const sortedMonths = spanishMonths.filter(m => monthlyTotals[m] !== undefined);
-
-                let totalsRows = '';
-                sortedMonths.forEach(month => {
-                    totalsRows += `
-                        <tr class="hover:bg-gray-100 transition">
-                            <td class="px-4 py-2 border text-gray-700">${month}</td>
-                            <td class="px-4 py-2 border text-gray-700 font-semibold">${monthlyTotals[month].toFixed(2)}</td>
-                        </tr>`;
-                });
-
-                if (sortedMonths.length > 0) {
-                    $('#monthlyTotalsBody').html(totalsRows);
-                    $('#monthlyTotalsSection').show();
-                } else {
-                    $('#monthlyTotalsSection').hide();
-                }
-            }
-
-            // Gráfica de cantidad total por material (Pie)
-            function updateMaterialQuantityChart(data) {
-                const materialTotals = {};
-
-                data.forEach(item => {
-                    if (materialTotals[item.material_name]) {
-                        materialTotals[item.material_name] += item.total_quantity;
-                    } else {
-                        materialTotals[item.material_name] = item.total_quantity;
-                    }
-                });
-
-                const labels = Object.keys(materialTotals);
-                const quantities = Object.values(materialTotals);
-
-                const colorMap = {
-                    'Trigo': 'rgba(34, 197, 94, 0.6)',
-                    'Suplemento Vitamínico': 'rgba(234, 179, 8, 0.6)',
-                    'Heno': 'rgba(59, 130, 246, 0.6)',
-                    'Agua': 'rgba(139, 92, 246, 0.6)'
-                };
-
-                const backgroundColors = labels.map(label => colorMap[label] || 'rgba(107, 114, 128, 0.6)');
-                const borderColors = backgroundColors.map(color => color.replace('0.6', '1'));
-
-                if (materialQuantityChartInstance) materialQuantityChartInstance.destroy();
-
-                const ctx = document.getElementById('materialQuantityChart').getContext('2d');
-                materialQuantityChartInstance = new Chart(ctx, {
-                    type: 'pie',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Cantidad Total Necesaria',
-                            data: quantities,
-                            backgroundColor: backgroundColors,
-                            borderColor: borderColors,
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: 'Cantidad Total de Materiales Necesarios (2024)',
-                                font: {
-                                    size: 18
-                                }
-                            },
-                            legend: {
-                                display: true,
-                                position: 'bottom'
-                            }
-                        }
-                    }
-                });
-            }
-
-            // Gráfica de tendencia mensual por material (Line)
-            function updateMaterialTrendChart(data) {
-                const materialTrend = {};
-
-                data.forEach(item => {
-                    if (!materialTrend[item.material_name]) {
-                        materialTrend[item.material_name] = {};
-                    }
-                    if (materialTrend[item.material_name][item.month]) {
-                        materialTrend[item.material_name][item.month] += item.total_quantity;
-                    } else {
-                        materialTrend[item.material_name][item.month] = item.total_quantity;
-                    }
-                });
-
-                const colors = {
-                    'Trigo': 'rgba(34, 197, 94, 0.6)',
-                    'Suplemento Vitamínico': 'rgba(234, 179, 8, 0.6)',
-                    'Heno': 'rgba(59, 130, 246, 0.6)',
-                    'Agua': 'rgba(139, 92, 246, 0.6)'
-                };
-
-                const datasets = Object.keys(materialTrend).map(material => {
-                    const quantities = spanishMonths.map(month => materialTrend[material][month] || 0);
-                    return {
-                        label: material,
-                        data: quantities,
-                        backgroundColor: colors[material] || 'rgba(107, 114, 128, 0.6)',
-                        borderColor: (colors[material] || 'rgba(107, 114, 128, 1)').replace('0.6', '1'),
-                        borderWidth: 2,
-                        fill: false,
-                        tension: 0.1
-                    };
-                });
-
-                if (materialTrendChartInstance) materialTrendChartInstance.destroy();
-
-                const ctx = document.getElementById('materialTrendChart').getContext('2d');
-                materialTrendChartInstance = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: spanishMonths,
-                        datasets: datasets
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: 'Tendencia Mensual de Materiales (2024)',
-                                font: {
-                                    size: 18
-                                }
-                            },
-                            legend: {
-                                display: true,
-                                position: 'bottom'
-                            }
-                        },
-                        scales: {
-                            x: {
-                                title: {
-                                    display: true,
-                                    text: 'Mes'
-                                }
-                            },
-                            y: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Cantidad Necesaria'
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-
-            // Eventos
-            $('#animalFilter').change(function() {
-                currentLimit = 60; // Reiniciar el límite cuando cambie el filtro
-                fetchMaterialsData();
-            });
-            $('#materialFilter').change(function() {
-                currentLimit = 60; // Reiniciar el límite cuando cambie el filtro
-                fetchMaterialsData();
-            });
-            $('#limitFilter').change(function() {
-                // Reiniciar el límite local (filas a mostrar) ya que cambiamos el limit remoto
-                currentLimit = 60;
-                fetchMaterialsData();
-            });
-
-            $('#loadMoreButton').click(function() {
-                currentLimit += increment;
-                fetchMaterialsData();
-            });
-
-            // Carga inicial
-            fetchMaterialsData();
+      // Build arrays from current materialsData
+      const labels = materialsData.map(m => m.nombre);
+      let dataValues;
+      if (metric === "stock") {
+        dataValues = materialsData.map(m => m.stock);
+      } else if (metric === "cost") {
+        dataValues = materialsData.map(m => m.cost);
+      } else {
+        // ratio = stock / cost (avoid division by zero)
+        dataValues = materialsData.map(m => {
+          return (m.cost > 0) ? (m.stock / (m.cost / 1000)) : 0;
         });
-    </script>
+      }
+
+      const ctx = document.getElementById("reportChartCanvas").getContext("2d");
+      customReportChart = new Chart(ctx, {
+        type: chartType,
+        data: {
+          labels,
+          datasets: [{
+            label: `Métrica: ${metric}`,
+            data: dataValues,
+            backgroundColor: "rgba(139, 92, 246, 0.6)",
+            borderColor: "rgba(139, 92, 246, 1)",
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { beginAtZero: true },
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    $(document).ready(function(){
+      // Initialize charts
+      initCharts();
+
+      // Populate table & stats by fetching from /materials_data
+      fetchMaterialsData();
+
+      // Button handlers
+      $("#applyFiltersBtn").click(applyFilters);
+      $("#openTableBtn").click(() => {
+        openMaterialsDrawer();
+      });
+      $("#closeTableBtn").click(() => {
+        closeMaterialsDrawer();
+      });
+
+      $("#generateReportBtn").click(buildCustomReport);
+    });
+  </script>
 </body>
 </html>
