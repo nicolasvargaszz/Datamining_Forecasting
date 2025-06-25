@@ -98,6 +98,7 @@ Abre tu navegador y accede a [http://127.0.0.1:5000](http://127.0.0.1:5000) 🚀
 ## 🎯 Objetivo del Proyecto
 
 Facilitar el análisis predictivo y la planificación de recursos en la industria agrícola, optimizando la gestión de ventas y suministro de materiales.
+Hacer comparación de los datos predichos con los datos reales.
 
 ## 🤝 Colaboración
 
